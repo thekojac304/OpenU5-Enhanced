@@ -89,8 +89,11 @@ QuestCommandResult pickup_plot(CommandContext &c,size_t index,EventSink sink) {
 }
 CommandStatus use_quest_item(CommandContext &c,int32_t id,EventSink sink) {
     auto message=[&](const char *t){event(sink,GameEventKind::Message,t);};
-    if(id==18 || id==36){char spell=id==18?'\x0e':'\x1d';message(id==18?"Amulet":"Badge");if(c.turn.time_spell==spell){c.turn.time_spell=0;c.turn.spell_turns=-1;message("Removed!");}else{c.turn.time_spell=spell;c.turn.spell_turns=255;message(id==18?"Wearing the Amulet of Lord British...":"Badge worn!");}return CommandStatus::Success;}
-    if(id==19){message("Crown");c.game.worn_crown=!c.game.worn_crown;message(c.game.worn_crown?"Thou dost don the Crown of Lord British...":"Removed!");return CommandStatus::Success;}
+    // A4-PARITY1 (P1b): the crown is the third wearable on the time-spell byte [0x587a]:
+    // CAST 0x193e -> toggle 0x1764(0x1c) -> set_time_spell(anim 9, 0xff, 0x1c) (CAST2 0x08f8
+    // via the kernel thunk 0x80b2), as the amulet (0x0e) and the badge (0x1d). It replaces
+    // any time effect and is saved with it; worn_crown is no longer written.
+    if(id==18 || id==36 || id==19){char spell=id==18?'\x0e':id==19?'\x1c':'\x1d';message(id==18?"Amulet":id==19?"Crown":"Badge");if(c.turn.time_spell==spell){c.turn.time_spell=0;c.turn.spell_turns=-1;message("Removed!");}else{c.turn.time_spell=spell;c.turn.spell_turns=255;message(id==18?"Wearing the Amulet of Lord British...":id==19?"Thou dost don the Crown of Lord British...":"Badge worn!");}return CommandStatus::Success;}
     auto *s=c.quest_world;
     if(id==33){message("Plans");if(c.game.transport==TransportMode::Ship){c.game.hms_cape=true;message("The ship is already rigged.");}else message("Only usable on shipboard!");return CommandStatus::Success;}
     if(id==20){
@@ -147,6 +150,11 @@ CommandStatus rescue_events(CommandContext &c,bool absorption,EventSink sink) {
     const char *record=nullptr;
     if(c.game.wooden_box){auto *s=c.quest_world;if(!s || !s->end_record || !(record=s->end_record(s->context,9)))return CommandStatus::InvalidContext;}
     auto ending=rescue_lord_british(c.game,absorption);
+    // Alpha 4 A4-UI4 (D-73): the absorption prints nothing here -- ENDGAME.OVL
+    // prints ENDMSG.DAT in its own order (the endgame script); the connector and
+    // the console copies of ENDMSG and the scroll below were the reference's own
+    // narration. The reference (lordbritish.ts) changed in step; quest_parity.
+    if(absorption)return CommandStatus::Success;
     message("Bearing amulet, crown and sceptre, thou dost shatter the final seal of Doom.");
     message("Lord British rises, unbroken, and takes again the throne of Britannia.");
     if(ending==RescueEnding::Victory){
@@ -330,6 +338,9 @@ bool buried_stone_at(const GameState &g,const QuestWorldServices &s,int32_t x,in
 bool moongate_at(const GameState &g,const TurnState &t,const QuestWorldServices &s){
     if(active_gate_phase(g,t,s)<0)return false;
     return buried_stone_at(g,s,g.position.xy.x,g.position.xy.y);
+}
+bool moongate_stone_at(const GameState &g,const QuestWorldServices &s,int32_t x,int32_t y){
+    return !g.position.map.location && buried_stone_at(g,s,x,y);
 }
 bool moongate_visible_at(const GameState &g,const TurnState &t,const QuestWorldServices &s,int32_t x,int32_t y){
     return !g.position.map.location && s.moon_phases && active_gate_phase(g,t,s)>=0 && buried_stone_at(g,s,x,y);

@@ -133,7 +133,8 @@ int main(){
      const auto before_ready=shortcut_spy.intents.size(),ready_log=shortcuts.transcript_size();
      check(shortcuts.handle_input(ch('r')));
      check(shortcut_spy.intents.size()==before_ready+1&&shortcut_spy.intents.back().kind==UiIntentKind::OpenEquipmentSelection);
-     check(shortcuts.transcript_size()==ready_log+1&&std::strcmp(shortcuts.transcript_at(shortcuts.transcript_size()-1)->text,"Ready")==0);
+     check(shortcuts.transcript_size()==ready_log+2&&std::strcmp(shortcuts.transcript_at(shortcuts.transcript_size()-2)->text,"Ready...")==0&&
+           std::strcmp(shortcuts.transcript_at(shortcuts.transcript_size()-1)->text,"")==0); // A4-UI4: DS 0xa1f0 "Ready...\n\n"
  };
  expect_exploration_shortcuts();
  GameEvent shortcut_event{};shortcut_event.kind=GameEventKind::CombatStarted;
@@ -163,9 +164,11 @@ int main(){
  check(dungeon_spy.intents.back().command.kind==CommandKind::ViewGem);
  dungeon_ui.handle_input(ch('z'));
  check(dungeon_spy.intents.back().kind==UiIntentKind::OpenStatusSelection);
+ // A4-PARITY1 (NEW-2, D-4): (M) underground is Mix, the shared kernel dispatcher's
+ // handler (CMDS 0x1AD8), not the old Cast alias (ledger A-7): changed on purpose.
  dungeon_ui.handle_input(ch('m'));
  check(dungeon_spy.intents.back().kind==UiIntentKind::OpenSpellSelection&&
-       dungeon_spy.intents.back().request==UiRequestId::Spell);
+       dungeon_spy.intents.back().request==UiRequestId::Custom);
  dungeon_ui.begin_selection(UiMode::InventorySelection,UiRequestId::Inventory,"Use?",{nullptr,item_count,item});
  dungeon_ui.handle_input(action(UiActionKind::Cancel));
  check(dungeon_ui.mode()==UiMode::Dungeon&&dungeon_ui.base_mode()==UiMode::Dungeon);

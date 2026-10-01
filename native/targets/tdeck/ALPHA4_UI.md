@@ -1495,6 +1495,7 @@ In DOSBox (or real DOS) with the same install (`original/u5/ultima5`, the Exodus
 
 - `VICTORY!` (the native arena's line when the absorption ends combat) precedes the ending; the original goes from `absorb` straight to the overlay. Pinned by Batch 53A R3; a combat change — ledger **D-72**, queued.
 - The TypeScript reference's rescue narration (`rescue_events`, pinned by quest_parity) is not ENDMSG's text or order; the device no longer uses it — ledger **D-73**, queued as a reference fix (fix the reference at the pinned layer, then regenerate).
+- *(A4-UI4/PRES1, §8.5 and §8.8: D-72 fixed — the arena's "ended" line is no longer printed and Doom's cell latches silently; D-73's narration half fixed in the reference and the parity path. The reference's auto-answered box questions stay queued.)*
 - Developer has no per-member "kill" shortcut, so the hardware route shows a revival only with an already-fallen companion.
 - The real Joyous Reunion length comes from the parsed XMI on the device; the host checks the chain with a declared length.
 
@@ -1534,3 +1535,889 @@ The user ran §7.15 on the T-Deck with the final image of §7.14 — `OpenU5-TDe
 **Closeout runs** on the committed tree (no production or test logic changed since §7.13, so no mutation pass was repeated): END1 focused 50/50, 56/56, 11/11 and the serial full suite (`native/core/a4-end1-closeout-{focused,ctest}.log`). The post-commit build (`native/core/a4-end1-postcommit-{configure,build,package}.log`, directory `build-a4-end1-postcommit`) checks that the committed tree builds to the same image apart from its embedded Git line; **the tested image remains the §7.14 one** (`Git 09cc460052ee-dirty`), and that is the one the tag records. Results: closeout focused **50 / 50, 56 / 56, 11 / 11**; serial full suite **175 / 175** (143.90 s). The post-commit image (`Git d6457ab10589`, SHA-256 `5855fd5171767f73f5e08ac950996fdd86511edde26ff8afa38fdfeb4a1c7aa2`, 1,026,688 B) has every section the same size as the tested one; its bytes differ only by the embedded Git line, whose different length shifts the layout. It was not flashed and is not the validated image.
 
 D-72 and D-73 stay queued, out of A4-END1's scope.
+
+## 8. A4-UI4/PRES1 — frontend and presentation finalization
+
+One batch, two halves. **UI4** fixes the frontend and the gameplay screen where they were inconsistent or broken. **PRES1** restores small original-game presentation behaviour, derived from the binaries and still missing or approximate on the device. This includes D-72 and D-73, the two items END1 left queued.
+
+No save format, gameplay rule, resource pack or audio pack changed. The A4-END1 cinematic is untouched apart from one thing: D-72 removes the stray `VICTORY!` that preceded it.
+
+Two subjective changes were mocked up and **not** implemented, pending the user's choice (§8.10).
+
+### 8.1 Baseline
+
+- `main` at `e53741b2`, the annotated tag `alpha4-end1-hardware-validated`. The tree was clean.
+- Host build `native/core/build-a4-ui4`. Serial suite **175 / 175** (156.73 s; `native/core/a4-ui4-baseline-{configure,build,ctest}.log`). The only warning is the long-standing `stl_uninitialized.h` false positive.
+- Firmware baseline: END1's tested image, `0xfaa80` (1,026,688 B), with **21,888 B free**.
+
+### 8.2 Investigation (before any production change)
+
+The candidate list was built from these sources:
+- the Alpha 3 deferred list (`ALPHA3.md` §2);
+- the Alpha 2 handoff (`ALPHA2.md`);
+- the ledger's open rows;
+- the audit's Alpha 4 sections;
+- ALPHA4_UI §2–§7 and their "left out of scope" lists;
+- the frontend document (`ALPHA20_FRONTEND_NEW_GAME.md`);
+- a host screen survey: the real runtime and Board, every frontend page, the gameplay screen at all three text sizes, pickers, the Developer screen.
+
+The reference port's skin was read for the console conventions; the binary was read wherever the rule was in question. Two findings came from the survey, not from any document:
+- **Small text was garbled.**
+- **A lost battle printed `BATTLE IS LOST!` three times.**
+
+| # | Candidate | Source | Disposition |
+|---|---|---|---|
+| F1 | The main-menu footer names `J C T U A R`; S and P are also hotkeys | survey | **fixed** (§8.3) |
+| F2 | Boot splash "Alpha 2.0", diagnostics "Alpha 2.0 Debug", identity "OpenU5 HARDWARE-TRUTH … Starting diagnostic runtime" | survey | **fixed** (§8.3) |
+| F3 | Small text drops each glyph's last column and bottom row ("Load" → "Lcac") | survey | **fixed** (§8.3; mockup shown) |
+| F4 | "Mic saves" (title) vs "Mic returns" (System Menu) on the same Settings rows; "Developer / Debug" vs "Developer" | survey | **fixed** (§8.3) |
+| — | D-5 Acknowledgements | ledger | **obsolete**: the original STARTSC.16 panel has shown since Alpha 2.0; the curtain reveal is queued |
+| H1 | D-53's `Direction?` half (H-15): a world getdir showed `Aim: empty (-1,-1)` | ledger, audit | **fixed** (§8.4) |
+| H2 | The underworld captioned "Britannia" (HUD, save rows, PC import line) | A4-SAVE3 item 7, A4-UI3 §6.15 | **fixed** (§8.4) |
+| H3 | D-12: the zodiac view clipped by the strips | ledger | **fixed** (§8.4) |
+| H4 | D-52: `^` drawn as `?` | ledger | **fixed** (§8.4) |
+| H5 | In-game pickers and shops select with a green `>`; every menu since UI1 uses reverse video, as do the original's pickers (0x2a28) | survey | **subjective: mockup, awaiting a decision** (§8.10) |
+| H6 | The HUD's `HH:MM` clock is not the original's | web skin F-F | **kept** (A4-UI1's choice); recorded as E-7 |
+| P1 | D-72 `VICTORY!` before the ending; **new**: `BATTLE IS LOST!` ×3 / `VICTORY!` ×2 (D-74) | ledger, survey | **fixed** (§8.5) |
+| P2 | Console echoes against DATA.OVL: `Look-` then `north` on its own row; `Cast`, `Ready`, `Z-stats`, `Klimb` printed twice, `Mix`, the arena's `Get`/`Open`/`Search` | survey, reference `CMD_STRINGS` | **fixed** (D-75, §8.5); the rest of the echo family is queued |
+| P3 | D-48: the moongate transit, and the gates' rise and fall | ledger | **fixed** (§8.7) |
+| P4 | D-67: the shard ritual's bursts (60/60 ms, silent) | ledger | **fixed** (§8.6) |
+| P5 | D-69: one 2 px drop for a whole shake over a still view | ledger | **fixed** (§8.6) |
+| P6 | D-68: the Refuge stage's content | ledger | **fixed** (§8.6; device presentation only) |
+| P7 | D-71: Mix's echo and its 10-tick wait | ledger | **fixed** (§8.5); the picker legend and the spell list are declared (A-17) |
+| P8 | The console's echo bullet `►`, a blank row before each command, bottom anchoring, the flame-wave wait cursor (IBM.CH 0x05–0x08) | reference `skin/fiel` (`consoleLinesToRows`, `CONSOLE_CURSOR_WAVE`), `getkey-cursor-derivacion.md` | **subjective adaptation to the 5×7 transcript: mockup, awaiting a decision** (§8.10) |
+| D-73 | The reference's rescue narration | ledger | **narration half fixed** (§8.8); the reference's auto-answered box questions (D-56's reference half) stay queued |
+| — | D-8, D-13 (with the echo family), D-14, D-15, D-16, D-38's NPC pose, D-10/D-39 residuals, D-58/D-59, D-50/D-51, D-60, D-1/D-2/D-4/D-7/D-9, D-17/D-18; the intro's six story plates, the credits curtain, the title's walking figures | ledger, `ALPHA20_FRONTEND_NEW_GAME.md` | **queued**, each for its reason (§8.11) |
+
+### 8.3 Frontend (UI4)
+
+- **F1. Hotkey footer.**
+  - The main menu takes `JCTUARSPD` (`FrontendSession::handle`), but its footer named `J C T U A R`.
+  - It now reads `Select: arrows / Enter / J C T U A R S P`, plus ` D` when the Developer row is shown.
+  - The UI1 `main-menu` golden is re-recorded for this footer alone; the other seven are byte for byte.
+- **F2. Boot screens name the image's release.**
+  - `firmware_release_label()` (`device_ui_views.h`, static strings, no buffer) maps `PROJECT_VER`'s major to "Alpha N". `main.cpp` hands it to `Board::set_release_label()` before `initialize_display()`.
+  - The splash shows "Alpha 4". The diagnostics screen shows the same label.
+  - The identity screen's title is "OpenU5-TDeck" and its last line "Starting".
+  - The `FW` / `Git` / `RES` / `ASSET` lines every hardware check reads are unchanged.
+- **F3. Small text.**
+  - The 5×7 face drawn into Small's 4×6 glyph sampled column `col*5/4` and row `row*7/6`, so it never read column 4 or row 6: "o" became "c", "n" became "r".
+  - Small now merges the middle column pair (2,3) and the middle row pair (3,4) by OR, and keeps every stroke.
+  - Same metrics and cell, no font table (`draw_text_box_metrics`). Medium (1:1) and Large (up-scaled) are unchanged.
+  - Mockup: `C:\dev\ui4-scratch\mock-small-text.png` (not in the repo).
+- **F4. One wording.**
+  - Both Settings pages say `Left/right changes; Mic saves`; Mic leaves either page and persists it.
+  - The System Menu's developer row is "Developer", as on the title menu.
+- **Unchanged:** the title, main menu, Journey Onward, Load/Save, PC Save Transfer, confirmation and error pages. Their layouts were reviewed and found consistent with UI1–UI3.
+
+### 8.4 The gameplay screen (UI4)
+
+- **H1 (D-53 / H-15).**
+  - A getdir reads only a direction (kernel 0x35EC). This covers Look-, Talk-, Attack-, Open-, Get-, Search-, Jimmy-, Push- and Klimb- in the world, and Get-/Open-/Search- in the arena.
+  - Its status line now reads `Direction?`. The aim readout stays the arena Attack's own.
+- **H2.**
+  - `hud_location_caption()` tested `floor < 0`, but Native keeps the outdoor underworld as floor 255. It now treats both 255 and −1 as the underworld.
+  - This fixes the HUD caption, the save rows' place and the PC import line together, since they share the function.
+- **H3 (D-12).** The spyglass's zodiac view is drawn full-square, as the gem view is (R-17 / Y-14).
+- **H4 (D-52).** `^` is a glyph of the 5×7 face. Z-stats marks the readied item with it.
+- **E-7 (recorded, unchanged).** The status box's `HH:MM` clock. It is not the original's, but it gives the handheld player a clock.
+
+### 8.5 Console feedback (PRES1)
+
+- **D-72 and D-74: the arena's "ended" event is never printed.**
+  - `combat.cpp`'s `end()` emits a `CombatEventKind::Ended` line, "VICTORY!" or "BATTLE IS LOST!", once or twice per end. `UiSession::append_combat_event` printed it.
+  - So a defeat showed `BATTLE IS LOST!` three times, the third being `finish_encounter_combat`'s own line, and a won battle printed `VICTORY!` again as the party walked out.
+  - The original prints the defeat once (COMBAT 0x0cda) and leaves silently with the victory flag (0x0cd3). The reference's `combatOut` prints only messages, hits and echoes.
+  - Doom's cell has no enemy at entry, so its latch is silent (COMBAT 0x0bb2–0x0bc0). The absorption therefore reaches the ending with no `VICTORY!` (D-72).
+  - The core event is unchanged, so combat parity is unaffected.
+- **D-75: the dispatcher's own echoes** (DATA.OVL, the kernel table DS 0xa134–0xa28c; the arena's copies in COMBAT.OVL).
+  - **Direction word.** getdir 0x35EC prints the direction word on the command's own row: "Look-North" (DS 0xa2a6 "North", 0xa2ae "South", 0xa2bc "East", 0xa2b6 "West"). This applies to Look, Open, Get, Search, Jimmy, Push, Klimb and Attack, and to the arena's Get-/Open-/Search-.
+  - **Talk and Fire are left alone.** They are not shown to reach 0x35EC and keep their old row.
+  - **Corrected strings:**
+    - `Cast...` (0xa142);
+    - `Ready...` plus a blank row (0xa1f0 `"Ready...\n\n"`);
+    - `Use item` plus a blank row (0xa24c);
+    - `Z-stats...` (0xa28c);
+    - `Klimb-` (0xa1a0) once, where its direction question used to echo the token "klimb" as a second row;
+    - the arena's `Get-` (DS 0x6e14), `Open-` (0x6e22) and `Search-` (0x6e3a).
+- **D-71 (part).**
+  - `M` echoes `Mix Reagents` plus a blank row (DS 0xa1b4).
+  - "Done!", or the trap, follows "Mixing..." after 10 ticks: CMDS 0x1b88–0x1b9c runs `delay(10)` or `run_n_frames(10)`, 550 ms. Keys are swallowed, as in every timed beat (A3-HF7's `DialoguePacer` Effect, keyed on the core's own "Mixing..." literal).
+- **Declared (A-17).** The spell is picked from a list, and the picker's legend is on its context bar instead of the three console lines.
+
+### 8.6 Scene beats (PRES1)
+
+- **D-67: the shard ritual** (CAST 0x16e1–0x16fa, seven calls of `explosion_fx_at_cell` 0x3522; read again this batch).
+  - Each burst is tile 0 held for `noise_burst(0x7d0, 0xbb8, 0xa)`: 174 ms, `kBlackthornBurstSamples`, A3-HF8's burst. It then plays the CombatHit program as it lands, followed by `viewport_redraw`.
+  - The redraw has no timer, so the device holds the cleared cell for one tick (the render-bound floor of Batch 51).
+  - Before: 60 ms on, 60 ms off, silent, and only 4 of the 7 bursts visible.
+  - `WorldFxLayer::take_burst_starts()` tells the runtime when each burst begins.
+- **D-69: the quake.** An animation-only frame redraws only the animated cells. Each change of the quake offset (a pulse down, its rest) is now a full frame, so a shake shows all its pulses: 16 changes per shake.
+- **D-68: the Refuge stage** (BLCKTHRN `party_refuge`; read again this batch).
+  - After the darkness line, 0x098f–0x09ca clear every object, so the stage is empty.
+  - 0x09f5–0x0a07 put slot 0 (0x1c) at (5,5) right after "But thy slumber is disturbed!" (and before its sweeps). The pacer marks that beat (`places_avatar`: the beat with the six slumber sweeps), and `refuge_scene_figures(…, avatar_placed)` draws the Avatar from then on.
+  - The last stage (0x0bc4–0x0be7) blacks the window and blits 0x11c at (5,5): the Avatar alone.
+  - Device presentation only: the scene names that `quest_parity` pins are unchanged. `[0x587c]` = 0x1e during the first `delay(10)` is still not modelled.
+
+### 8.7 The moongates (D-48)
+
+**The original** (ULTIMA.EXE and EGA.DRV; read this batch):
+
+- **0x475a, `kernel_moongate_render`.**
+  - At night (hour ≥ 20 or < 5, 0x4767–0x4773) each compositor pass raises the cosmetic counter `[0x5887]` (0x3ef0, capped at 16).
+  - By day it sinks (0x3f36), and at 0 the cell is grass again (0x4798).
+  - It writes the gate tile (0xdc) **into the map buffer** on every buried stone's cell. 0xdc is a light source, so a standing gate lights its surroundings.
+- **0x56e6 → 0x1112 → EGA.DRV fn 0x60 (0x24d6).** A gate cell at stage 1..15 is tile slot 0x116, composed as follows:
+  - **grass** (tile 5) — or the floor 0x44 when `[0x5893]` == 0xff, i.e. the ending;
+  - with its bottom *n* rows replaced by the **top** *n* rows of 0xdc.
+- **0x266c → 0x5910.** The idle getkey redraws outdoors every tick, so a rise is 16 ticks (~880 ms).
+- **0x48a8, `kernel_moongate_enter`** (the party on a gate):
+  1. `run_n_frames(1)`.
+  2. The activation sweep (0x48e5, tone_sweep count 0x7530: 1,162 ms at the calibrated floor).
+  3. `fx_tile_fizzle_in(0xdc)` over the party.
+  4. `run_n_frames(1)`.
+  5. The gate closes over the cell, 0x1112(15 → 1) with `delay(2)` each: 15 × 2 ticks = **1,648 ms**.
+  6. Grass.
+  7. At 00:00–00:09 no teleport, otherwise the teleport (0x47f4). The closing leaves `[0x5887]` = 0, so the destination's gate rises from 0.
+
+**The device:**
+- The runtime keeps the counter: one stage per 55 ms tick on the surface.
+- `compose_world_presentation(…, moongate_stage)` places a gate while the counter is above 0, sets the frame's partial stage, and makes the sampler see a standing gate as 0xdc for the light pass, so the gate glows.
+- The renderer composes every 0xdc cell at 1..15 as grass plus the gate's top rows. The ending's partial gate is the same code with its floor 0x44.
+- The core's own `moongate` cue is emitted on the origin before the teleport, and it starts the transit presenter:
+  - the origin stays on screen;
+  - its centre is the party, then the gate, then the closing stages over grass;
+  - the destination appears after ~2,980 ms;
+  - no key acts until the transit's clock has run, as in 0x48a8.
+
+**Declared:**
+- The counter is not saved (SAVED.GAM +0x2E1). A load settles it: 16 at night, 0 by day.
+- The fizzle is held one tick, the render-bound floor.
+- The sweep's hold is the calibrated floor.
+
+### 8.8 D-73 — the reference's rescue narration
+
+- **The change.** On the absorption path (the only one the game takes), `rescueLordBritish` (`game/src/core/quest/lordbritish.ts`) and native `rescue_events` (the parity drivers' path) now print nothing. ENDGAME.OVL prints ENDMSG in its own order, and the reference's script (`buildEndgameScript`) carries it.
+- **Removed text** (the port's own narration): the connector lines "Bearing amulet, crown and sceptre…" and "Lord British rises…", plus the console copies of ENDMSG and of the scroll.
+- **Kept.** The direct callers' gated path (tests and debug) is unchanged. The device never used either path; its presenter plays the ending.
+- **Proof** (fix the reference at the pinned layer):
+  - With the reference changed alone, `quest_parity` failed at the first absorption case (`Quest mismatch 4809`).
+  - With both changed it passes, together with `quest_case_table_drift`.
+  - A token diff of the native driver over all 5,377 inputs: 18 rows change (the absorption cases), and only by losing message events. Their state, seed and every other event are identical (`a4-ui4-d73-quest-diff.log`).
+  - The reference's vitest: 7,728 tests, 97 failing, the same failing set before and after (`a4-ui4-d73-vitest.log`).
+- **Still queued:** the reference answers the box questions from the inventory (D-56's reference half), which needs an interactive web script.
+
+### 8.9 Device adaptations and rows
+
+| Row | What |
+|---|---|
+| A-17 (new) | Mix: the spell from a list, the reagent picker's legend on its context bar |
+| E-7 (new, records A4-UI1) | The status box's `HH:MM` clock |
+| D-48 | The moongate counter is not saved (settled on load); the fizzle is a one-tick floor; the sweep is the calibrated floor |
+| D-67 | The redraw between two bursts is a one-tick floor |
+| D-75 | Talk / Fire keep their own direction row (not shown to reach 0x35EC) |
+
+### 8.10 Subjective changes (mocked up; decided 2026-10-01, implemented in §8.20)
+
+*The user chose variant B for the console (the bullet, a blank row before each command, bottom anchoring, the flame-wave cursor) and reverse video for the pickers and shops. Both are implemented in §8.20. The proposal as it was mocked up:*
+
+1. **The console's original look, adapted to the 5×7 transcript.** All of it is derived from the reference skin and the getkey derivation:
+   - the echo bullet `►` (the original's two-tone full-cell triangle) on every command row;
+   - a blank row before each command (the LF getkey prints);
+   - bottom anchoring;
+   - the flame-wave cursor (IBM.CH 0x05–0x08) at every key wait: on a fresh `►` row when a command is awaited, at the end of the echo row in a getdir.
+
+   The mockup is `C:\dev\ui4-scratch\mock-console.png`: today / variant B (blank rows) / variant C (dense). Cost estimate: ~1–1.5 KB of flash, one animated cell.
+2. **In-game picker and shop selection in reverse video,** as every menu since A4-UI1 and as the original's 0x2a28 picker cursor. The mockup is `C:\dev\ui4-scratch\mock-picker.png`.
+
+### 8.11 Queued (not this batch)
+
+- **The rest of the console-echo family (D-75, D-13):**
+  - Talk/Fire's direction word;
+  - the dungeon's `Look...` / `Search...` / `Dir-` rows;
+  - `Player: <name>` / `Item: Done` and the inline Yes/No appends;
+  - the arena's `Attack-Aim!`.
+- **D-56's reference half** (the interactive box questions in the web script).
+- **The credits panel's curtain reveal, the intro's six story plates, the title's walking figures.** Each needs its own derivation and pack composition.
+- **D-8** (the Ready picker's empty-handed path; needs 0x0f2e and touches action cost).
+- **D-38's NPC bed pose** (needs a witness).
+- **D-10 / D-39** sweep residuals (machine-dependent).
+- **D-58 / D-59** (moongate gameplay).
+- **D-50 / D-51** (gameplay).
+- **D-60** (a decision).
+- **D-1, D-2, D-4, D-7, D-9, D-14, D-15, D-16, D-17, D-18.**
+- **Hardware status of A4-SAVE2, SAVE3 and UI3.** §4.12, §5.16 and §6.16 still read "hardware pending". A4-END1's run was on that tree, but no per-batch result was recorded. Checked against each batch's own records at the user's request (§8.21): none records a hardware PASS, so all three stay pending.
+- **`speaker_segment_frames` in flash** on the per-sample audio path (`a3_04b_iram_check` RED since at least A4-END1; §8.17).
+- **The console cursor at the other prompts** (yes / no, text, number, pickers; A-18) and **the strip logs' anchoring** in shops and pickers, beyond the bullet.
+
+### 8.12 Files
+
+- **Core:**
+  - `include/openu5/ui_session.h`, `src/ui_session.cpp` (the ended line, getdir's word, the echoes, Klimb; §8.20: the console layout, `UiTextCommand`, `answer_echo`, the arena's single Cast);
+  - `src/frontend.cpp`, `src/system_menu.cpp`;
+  - `include/openu5/world_fx.h`, `src/world_fx.cpp` (the burst and its sound);
+  - `include/openu5/narrative_scene.h`, `src/narrative_scene.cpp` (the Refuge stage);
+  - `include/openu5/presentation.h`, `src/presentation.cpp` (the gate stage, the glow);
+  - `include/openu5/quest_world.h`, `src/quest_world.cpp` (`moongate_night`, `moongate_stone_at`, D-73).
+- **Device:**
+  - `main/alpha_runtime.{h,cpp}` (Direction?, the zodiac square, the quake frames, the burst sound, the Mix hold, the Refuge's Avatar, the moongate counter and transit; §8.20: `configure_session()`, `console_ready()`, the cursor's phase);
+  - `main/tdeck_board.{h,cpp}` (the release label, Small, `^`; §8.20: the bullet cell, bottom anchoring, the wave cursor and its still-frame animation, the reverse-video lists);
+  - `main/device_ui_views.h` (`firmware_release_label`);
+  - `main/location_names.h`, `main/native_renderer.cpp` (the world partial gate), `main/main.cpp`;
+  - `CMakeLists.txt` (`PROJECT_VER` 4.0.0-alpha4-ui4-debug).
+- **Reference:** `game/src/core/quest/lordbritish.ts`.
+- **Tests and tools:**
+  - new `host_tests/a4_ui4_presentation_runtime_test.cpp`, `host_tests/a4_ui4_moongate_runtime_test.cpp`, `host_tests/a4_ui4_console_runtime_test.cpp` (§8.20);
+  - `host_tests/alpha_runtime_host_fixture.cpp` calls the production `configure_session()`; the two host Board stubs gain `animate_console_cursor()`;
+  - `native/core/tools/a4_ui4_red_first.py`, `native/core/tools/a4_ui4_mutation_check.py`;
+  - `native/core/CMakeLists.txt` registers the three tests.
+
+### 8.13 Existing tests changed on purpose
+
+| Test | Why |
+|---|---|
+| `ui_session` (check 153) | `Ready...` and its blank row (DS 0xa1f0) |
+| `batch25_shard_ritual` R9 / Y7 / S12 | `Look-North` on one row |
+| `batch53a_ending_terminal` R3 | it pinned the native `VICTORY!` at the absorption; it now pins its absence (D-72) |
+| `a4_end1_ending_runtime` E1, E2, S1, S4, N1 | E1, E2, S1 and S4 tolerated a leading `VICTORY!` and now require none. N1 (a pack without the ending, which the identity lock refuses on the device): the parity path prints no narration (D-73) |
+| `a3_01_audio_contract` F6 | the System Menu's Settings footer wording |
+| `a4_ui2_save_menu_runtime` F1, `a4_ui3_save_ux_runtime` C1 | the main-menu footer |
+| `a3_hf9_refuge_cadence_runtime` N1.3, N1.10 | N1.3: the darkness stage is all black, with no Avatar yet (was ≥ 98 of 99). N1.10: the peal's shake is 32 viewport changes, not one drop and one restore (H-212) |
+| `batch7b` B1, B7–B9, B16, E9 (+ RF0) | the 174 ms burst and its redraw; the last Refuge stage is the Avatar alone; an empty void before the slumber beat |
+| `batch53_release_blockers`, `batch53b_moongate_return` (their `step()`) | after a gate fires, the harness waits out the ~3 s transit, as a player does |
+| `a4_ui1_chrome_runtime` G1 (golden) | `main-menu` re-recorded for the footer; the other seven byte for byte |
+| `a3_04f_render_runtime` G1 (golden) | Re-recorded for the console text. Same 297 states and 2,766 render calls; with the console region masked, every state equals the UI1 recording (`a4-ui4-census-masked.log`) |
+| `a3_04f_render_runtime` G1 again, T2, the window classes (§8.20) | G1 re-recorded for the console package: 301 states over the same 2,766 calls; masked, all 297 equal the pre-console recording (`a4-ui4-console-golden-proof.log`). The census gives the cursor's one cell its own `cursor` class, so the transcript rules (T1–T5) still count rows; T2's one row now holds because the echo takes the prompt row's line (comment updated) |
+| `a4_ui1_chrome_runtime` G1 again (§8.20) | the four gameplay states: only the prompt row's bullet and cursor changed, 42 pixels at x 184–195, y 232–239 (`a4-ui4-console-golden-proof.log`) |
+| `a3_hf10_mix_parity_runtime` N1.4, N1.5 and its cell helper (§8.20) | the cursor is the reverse-video bar, not a green `>`; a cell is "lit" by ink against its row's own background |
+| `a3_hf6_shrine_key_wait_runtime` N2.5 (§8.20) | a 50 ms pause before a second roll the same way: the trackball's 12 ms debounce swallowed it once the console frame got shorter than the old frame's ~22 ms of modelled bus time |
+| `a4_ui4_presentation_runtime` (`transcript_row`) (§8.20) | finds a row on the bottom-anchored console |
+
+### 8.14 New tests and RED-first
+
+- **`a4_ui4_presentation_runtime`** (29 checks): F1, F1b, F2, F2b, F3, F3b, F4, F4b, H1, H1b, H2, H2b, H3, H4, E1, E1b, E1c, E5, E2, E3, E3b, E4, E4b, S1, S1b, S2, S3, S3b, S3c.
+  - It runs on the real runtime and Board over the fake panel, with the real audio pack.
+  - The oracle holds its own glyph bytes.
+- **`a4_ui4_moongate_runtime`** (11 checks): A0–A3 (the rise and fall, stage by stage, read off the composed cell and the panel against the cell's own day and night captures), T1–T6 (the transit's phases, timing and key hold), N1 (midnight).
+- **RED-first** (`native/core/tools/a4_ui4_red_first.py`): every changed production file is swapped for its `e53741b2` blob, in the checkout's line endings, in a build with `-DA4_UI4_HEAD_API`, which compiles out the two checks that need new API and counts them RED.
+  - **Presentation: 3 / 29**; the GREEN three are the controls F1b, F3b and S3b.
+  - **Moongate: 3 / 11**; the controls are A0, T1 and T6.
+  - Log: `a4-ui4-red-first.log`.
+- **`a4_ui4_console_runtime`** (19 checks, §8.20): C1–C13 with C6b, C8b and C11b, and P1–P3. **RED-first 1 / 19** both against the pre-console tree (the tool's new `--snapshot`) and against `e53741b2`; the GREEN one is the control C3 (no stray blue). Log: `a4-ui4-console-red-first.log`.
+
+### 8.15 Mutations
+
+`native/core/tools/a4_ui4_mutation_check.py <build> [ids]` runs 33 mutants of production code, built and run against the new tests and the existing witnesses (`batch53a`, `a4_end1_ending_runtime`, `a3_hf9`, `batch7b`, `batch25`, and `quest_parity` through ctest).
+
+The mutants by class:
+- the frontend: F1–F4b;
+- the screen: H1–H4;
+- the console: E1–E9;
+- the scenes: S1–S3c;
+- the moongates: M1–M7, including M4 = the pre-A4-UI4 device;
+- D-73: R1.
+
+**First pass:** 32 killed, 1 invalid (S3 left a parameter unused under `-Werror`; rewritten). The restored build was RED on one expectation, `a4_end1_ending_runtime` N1, which D-73 legitimately changes; N1 was updated (§8.13) and END1 became R1's second witness. S3 and R1 were re-run: both killed, restored GREEN (`a4-ui4-mutation-rerun.log`).
+
+**§8.20 adds 16 mutants** (C1–C13, P1–P3, witness `a4_ui4_console_runtime`). The full pass over all 49 (`a4-ui4-mutation-console.log`): 48 killed, 1 survived, 0 invalid, restored build GREEN. The survivor, C10 (the wave never moves on a still frame), lived because C6's room has animated cells whose frames moved the wave anyway; C6b (a still screen) was added and kills it (`a4-ui4-mutation-console-c10.log`). **49 / 49 killed.**
+
+**Earlier final pass (the test set before §8.20): 33 / 33 killed, 0 survived, 0 invalid; restored build GREEN.** That is 32 in the full pass (`native/core/a4-ui4-mutation.log`), plus M6: its anchor had moved when the transit's key hold became time-based, and the re-anchored mutant was killed by T5 (`a4-ui4-mutation-m6.log`).
+
+### 8.16 Host results
+
+| Run | Result | Log |
+|---|---|---|
+| Baseline (`e53741b2`) | **175 / 175**, 156.73 s | `a4-ui4-baseline-ctest.log` |
+| First full run after the change | 166 / 176, the ten updated on purpose (§8.13) | `a4-ui4-pass1-ctest.log` |
+| After the moongate subtrack | 175 / 177: `batch53_release_blockers` and `batch53b_moongate_return` stepped through the new transit's key hold; their harnesses now wait it out (§8.13), and the hold became time-based (`moongate_transit_active()`) so it ends on its own clock even when no frame runs | (console) |
+| UI4 focused | `a4_ui4_presentation_runtime` **29 / 29**; `a4_ui4_moongate_runtime` **11 / 11** | `a4-ui4-ctest.log` |
+| END1 | `a4_end1_ending_runtime` **56 / 56**, `a4_end1_endgame_scene` 50 / 50, `a4_end1_endgame_pages` 11 / 11, `batch53_release_blockers`, `batch53a_ending_terminal` | `a4-ui4-ctest.log` |
+| UI1 / UI2 / UI3 / SAVE regressions | `a4_ui1_chrome_runtime` 30 / 30 (one golden re-recorded), `a4_ui2_*`, `a4_ui3_*`, `a4_save1/2/3_*`, `a3_04g_storage_runtime`, `batch28_save_validation`: green | `a4-ui4-ctest.log` |
+| D-73 | `quest_parity` and `quest_case_table_drift` green; the reference's vitest FAIL set unchanged (97 / 7,728) | `a4-ui4-d73-*.log` |
+| Full suite | **177 / 177**, serial, 162.26 s | `a4-ui4-ctest.log` |
+| §8.20 first run | 174 / 177 before the host fixture ran the device's binder (a copy of `initialize()` never turned the layout on, so only `a3_hf10_mix` saw the lists); 174 / 177 after, the failures being the two goldens, the census's transcript rules, `a3_hf6` N2.5 and two row lookups (§8.13) | (console) |
+| §8.20 focused | `a4_ui4_console_runtime` **19 / 19**; presentation 29 / 29, moongate 11 / 11, END1 56 / 56, `a3_hf10_mix` 71 / 71, UI1 30 / 30, A3-04F 17 / 17, `a3_hf6` 48 / 48 | `a4-ui4-console-focused.log` |
+| **Full suite (final tree)** | **178 / 178**, serial, 164.06 s; host build 0 warnings | `a4-ui4-console-{build,ctest}.log` |
+
+### 8.17 Firmware
+
+**Final image (§8.20, the image to flash).** Built from scratch in `build-a4-ui4-final` (`idf.py --no-ccache -B build-a4-ui4-final reconfigure`, `ninja -j 4 all` 1180 / 1180, `package_launcher.py`; `a4-ui4-final-{idf-export,fw-configure,fw-build,package}.log`): no compiler warnings, only ESP-IDF's "nearly full" notice.
+- **Launcher:** `native/targets/tdeck/build-a4-ui4-final/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-Debug-Launcher.bin`, byte-identical to `build-a4-ui4-final/openu5_tdeck.bin`.
+- **SHA-256** `09f97efe46421dd20846f7ea72f8c1b04541eb919bb0b7b774273442de2f08d3`; `FW 4.0.0-alpha4-ui4-debug`, `Git e53741b23fbc-dirty`, ESP-IDF v6.1 (`a4-ui4-final-image-identity.log`).
+- **Size: 1,032,384 B (`0xfc0c0`)**: +3,248 B over the first UI4 image below, +5,696 B over A4-END1's. **16,192 B of the 1 MiB app partition free.** Partitions unchanged.
+- **By section** against the first UI4 image: flash `.text` +2,956, `.rodata` +272; internal `.data` +16 (the Board's cursor state); IRAM, `.bss` and PSRAM unchanged (`a4-ui4-final-fw-size-diff-vs-{ui4,end1}.log`, `a4-ui4-final-fw-size-archives.log`).
+- **ELF checks** (`a4-ui4-final-elf-checks.log`): `a3_04a_hotpath_check` GREEN. `a3_04b_iram_check` is RED on one flash function in the per-sample path, `speaker_segment_frames`, **in this image, the first UI4 image and the hardware-validated A4-END1 image alike**: it predates this batch, which touches no audio code. Not fixed here; queued (§8.11).
+
+**The first UI4 image (superseded; not to be flashed).** From scratch in a new directory:
+- `idf.py --no-ccache -B build-a4-ui4 reconfigure`;
+- `ninja -C build-a4-ui4 -j 4 all`: 1180/1180, first attempt;
+- `python package_launcher.py --build-dir build-a4-ui4`.
+
+There are no project warnings. The only warning lines are ESP-IDF's "smallest app partition is nearly full (2 % free)" notice and its `component_validation` notices (`a4-ui4-fw-{configure,build}.log`, `a4-ui4-package.log`).
+
+**The image.**
+- **Launcher:** `native/targets/tdeck/build-a4-ui4/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-Debug-Launcher.bin`, byte-identical to `build-a4-ui4/openu5_tdeck.bin`.
+- **SHA-256** `0f7155863c5794066aa43059154b13d74796c9c01b442644beea9bc5a5764ed2`.
+- **Embedded** (read back): `FW 4.0.0-alpha4-ui4-debug`, `Git e53741b23fbc-dirty`, ESP-IDF v6.1 (`a4-ui4-final-identity.log`).
+- **Size:** **1,029,136 B (`0xfb410`), +2,448 B** against A4-END1's `0xfaa80`. **19,440 B (2 %) of the 1 MiB app partition free** (was 21,888 B).
+- **By section:** flash `.text` +2,392, `.rodata` +48; internal `.bss` +80 (the moongate counter and transit, the quake's drawn offset, the Refuge flag, the burst counter); IRAM, `.data` and PSRAM unchanged (`a4-ui4-fw-size-diff.log`).
+
+**SD packs:**
+- **Resource pack unchanged:** A4-END1's, 2,266,819 B, SHA-256 `85b38994eea674e48338d744091c6b895b9507a286bb38bcc84231131feed01e`. No diff to the pack tools or the loader, so **no SD recopy**.
+- **Tile pack unchanged** (132,284 B, SHA-256 `6eb001ed…e188`).
+- **Audio pack unchanged** (local, 56,148 B, SHA-256 `28c1533b…a6d3`).
+
+### 8.18 Hardware checklist (A4-UI4 image)
+
+Everything below cannot be proven on the host; every route was checked through the same host path the Developer menu uses:
+- the teleport coordinates through `apply_debug_teleport`, as the moongate and underworld tests do;
+- the Flame/Shard Certification through Batch 25's real menu route;
+- the ending through A4-END1's route.
+
+Saves are not touched unless a step says so.
+
+0. **Flash.** Flash `build-a4-ui4-final/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-Debug-Launcher.bin` (SHA-256 `09f97efe…08d3`, 1,032,384 B; §8.17). The SD card stays as for A4-END1 (no pack changed).
+1. **Boot.** The splash reads **Alpha 4** (not Alpha 2.0). The identity screen is titled **OpenU5-TDeck** and shows `FW 4.0.0-alpha4-ui4-debug` and `Git e53741b23fbc-dirty`. **Stop if not.**
+2. **Title.**
+   - The main menu's footer reads `Select: arrows / Enter / J C T U A R S P`.
+   - **S** opens Settings; its footer reads `Left/right changes; Mic saves`.
+   - Set **Text / UI: Small**: every row's letters are whole ("Load Game", "Movement default", "Brightness"); nothing reads as "Lcac". Back to Medium. Mic.
+3. **In game (Continue).**
+   - Alt+M → Settings: the same footer. Set Small; the console text is legible. Back to Medium.
+   - Press **L** then roll up: one row reads **`Look-North`**. While it waits, the status line reads **`Direction?`** (not `Aim: empty (-1,-1)`).
+   - **C** → `Cast...` (Mic out). **R** → `Ready...` then a blank row (Mic). **U** → `Use item` then a blank row (Mic). **Z** → `Z-stats...` (Mic).
+3b. **The console (§8.20).** Right after Continue (Medium text):
+   - The newest text sits at the **bottom** of the console. Every command row starts with a **blue ► with a white edge**, and has an **empty row above it**. Messages ("Thou dost see…") have no ►.
+   - The last row is an empty ► with a **small white diagonal wave right after it, moving** (about nine steps a second).
+   - **Space** (Pass): `►Pass` appears where the empty ► was, with a new empty row and ► + wave below it.
+   - **L**: the wave now blinks right after `►Look-` and there is no ► row below it. Roll up: `►Look-North`, the result, and the ► + wave return.
+   - **T**, roll up: `►Talk-` then the direction on its own row, **without** a ► and without an empty row between them.
+   - Take ten steps; then **Shift+Up**: the view pages back and **no wave** shows; **Shift+Down**: it returns.
+   - Alt+M → Settings → Text **Small**, then **Large**: the ► and the wave fill their cells at each size. Back to Medium.
+   - *The console's height (the hardware run's finding) is described in §8.22.3 and retested in §8.22.6.*
+3c. **The lists (§8.20).** With two or more members (Alt+D → Party size 3 if needed), **R**: in "Ready Whom?" the chosen row is a **white bar with black text** (no green `>`). Roll down and up: the bar moves and leaves no white lines behind. Mic. The other pickers (U, Z's member, M's reagents) and any shop's offers select the same way.
+4. **Underworld caption.** Alt+D → Teleport → Underworld, Default Entrance **On** (126,20). The status box's caption reads **Underworld**. (Return with a Britannia teleport.)
+5. **The spyglass.**
+   - Alt+D → Shortcuts → **Preset: Stocked inventory** (it grants the spyglass and the reagents).
+   - Time → Hour **22**. On the Britannia surface, **U** → Spyglass.
+   - The zodiac fills the whole square, including the top and bottom rows: no blue bands across it.
+6. **The caret (H-63 / D-52).** It needs a member with **more than seven** owned armament entries. **Z** → the member → page right to the **Armaments** inventory page. The range/detail line reads `1-7 of N` with `v`. Roll **down**: the list scrolls by one and the marker reads **`^ v`** (it read `? v`). **Left/right** still change the page, not the scroll.
+   - *Corrected after the hardware run (§8.22): the first wording ("Ready a weapon … the readied item is marked `^`") pointed at the wrong place. H-63's `^` is the scroll marker. **Hardware 2026-10-01: PASS.***
+7. **Mix.**
+   - **M** → the first spell → mark its reagents → **M** → How much? **1** → Enter.
+   - The rows read `Mix Reagents`, a blank row, `Mixing...`, then about half a second later `Done!`. Keys pressed in that half second do nothing. During that half second there is **no ► row and no wave**; both return after `Done!`.
+8. **Moongates.**
+   - Alt+D → Teleport → Britannia, **X 96, Y 104**, Default Entrance **Off**.
+   - Time → Hour **12**: two cells north is grass.
+   - Time → Hour **21**: the gate **rises out of the ground** in about a second, step by step, and lights its cell.
+   - Hour **12** again: it **sinks** in about a second. Hour **21** again.
+   - Step north once (96,103), then north onto the gate. The moongate sweep sounds and the party stands on the gate for ~1.2 s. The gate covers the party, then **sinks into the ground in ~1.6 s** (15 steps), leaving grass. The destination appears with its gate rising under and around the party, about 3 s in total.
+   - Press keys during it: nothing moves.
+   - Optional: Time → Hour **0**, Minute **5**, on the gate (step off and back on): the same animation, and the party stays.
+9. **Shard ritual** (corrected route, §8.22.2: the first run's save evidently had Astaroth destroyed).
+   - **Astaroth alive:** Alt+D → Quest / World → **Quest flag**: set it to `1` (it reads `shadowlord-dead:hatred`). Roll down to **Toggle quest flag**: set it to `0`. Mic/Back out.
+   - **Hour:** Alt+D → Time → **Hour 12**. (At 05–06 and 19–20 o'clock a monk steps onto the ritual cell once the party leaves it.)
+   - Alt+D → Certification → **Flame/Shard Test** → Run. The party stands **on** the ritual cell, Empath Abbey F1 (15,3); the Flame is the cell directly north.
+   - Step **south** once, onto (15,4). It is a door; that is expected.
+   - **Y**, `ASTAROTH`, Enter. **No text** follows: the 1988 summons is silent (CMDS 0x1030). **Astaroth appears on the Flame**, two cells north. (`No effect!` here means Astaroth is still marked destroyed.)
+   - Step **north** once: back on (15,3), Astaroth directly north.
+   - **U** → Shard of Hatred: the header and `...and cast it into the Flame of Love!`. After the shakes, **seven** bursts on Astaroth's cell, each held a visible moment with a **crackle**, with a brief gap between them. Then `The doom of the Shadowlord Astaroth is wrought!`; Astaroth is gone and the shard leaves the inventory.
+10. **Refuge and quake** (A3-HF9's route).
+    - Alt+S first, if you want to return.
+    - Alt+D → Party size 1, Preset: **Low health/status**; Space until the Refuge.
+    - "An unending darkness engulfs thee..." → the view is **entirely black**.
+    - "But thy slumber is disturbed!" → **the Avatar appears** in the centre.
+    - "There is a peal of thunder!" → the black stage **visibly jolts several times** for ~2 s (was a single drop).
+    - At "Vertigo..." the last stage is **the Avatar alone** (no ghosts, no apparition). Then the castle as before.
+    - **Defeat line** (optional; A4-UI2's death-music route): with the same low-health party, attack a monster and lose. **`BATTLE IS LOST!` appears once** (it appeared three times). And a won fight shows `VICTORY!` once, not again as the party walks off the board.
+    - **Arena cast** (optional, in any fight): on a member's turn, **C** and choose a spell: **one** `►Cast...` row (it printed twice). While enemies move, no ► + wave shows.
+11. **The ending** (A4-END1 route A: Preset Endgame, Party size 1, Doom L6 (4,7), east into the pit, north ×4).
+    - After `Avatar is absorbed!` there is **no `VICTORY!`**; the throne room's text follows.
+    - Nothing else in the ending needs re-checking. Alt+L back.
+12. **Report:** the `FW` / `Git` lines, PASS/FAIL per step, photos of anything odd (Small text, the moongate's stages, the zodiac, the console's ► and wave, a picker bar).
+
+*Host-validated routes:* steps 3b–3c run on the host as `a4_ui4_console_runtime` C1–C11b and P1–P2 (the same keys and Settings route); the shop list (P3) and the arena's cast (C13) are checked below the menu route (the Board's shop view, the arena session), so their steps say "any shop" / "any fight" rather than a Developer route.
+
+### 8.19 Status
+
+| Axis | State |
+|---|---|
+| Investigation and plan | delivered before production code (§8.2) |
+| Objective UI4 / PRES1 fixes | **software complete** |
+| Subjective changes (§8.10) | **decided (variant B, reverse video) and implemented**, §8.20: software complete |
+| Host suite | **178 / 178** serial; focused 19 / 19, 29 / 29, 11 / 11; RED-first as above; mutations **49 / 49**. Hardware follow-up (§8.22): still **178 / 178** (151.66 s); console 34 / 34, shard route 51 / 51; mutations **6 / 6** |
+| Firmware | first image `0xfc0c0` (1,032,384 B), 16,192 B free, SHA-256 `09f97efe…08d3`. **Follow-up image** `0xfc150` (1,032,528 B), **16,048 B free**: Launcher `build-a4-ui4-hf1/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-hf1-Debug-Launcher.bin`, SHA-256 `1d57efce…3a44` (§8.22.5); packs unchanged (no SD recopy) |
+| Hardware (§8.18) | **first run 2026-10-01: PASS, except two follow-ups** — step 9's route was stale (a precondition, not a defect) and the console used 12 of its 19 rows (fixed). Caret (step 6) **PASS**. Retest of §8.22.6 **pending** |
+| Closed (commit, tag) | **no**: nothing committed, tagged, pushed or flashed |
+
+### 8.20 The console package and the reverse-video lists (decided 2026-10-01)
+
+The user chose variant B for the console (§8.10) and reverse video for the in-game lists. Both are presentation only: no save, rule, pack or core command output changed. The transcript's stored text is the same; only how the device lays it out and draws it.
+
+**The console, as the original does it and as the device now draws it:**
+
+| Original | Device |
+|---|---|
+| `getkey_with_redraw` (0x266c) opens a command with a line feed and the bullet; the echo lands after the bullet (`►Look-North`) | a command's first row starts with the bullet, after a blank row |
+| the bullet is a cell-filling two-tone ►: the frame's blue, a white edge on its slopes and tip (the reference's skin.ts `BULLET_BLUE` / `BULLET_WHITE`, calibrated to a DOS capture) | the same 8 × 8 masks, stretched end to end over the device's cell: 6 × 8 Medium, 5 × 7 Small, 8 × 10 Large |
+| the console window (INTRO.OVL `set_text_window` index 2) scrolls up from its last row | the rows are anchored at the bottom |
+| `poll_key_blink_cursor` (0x1b38) draws IBM.CH glyph `[0x5390]` + phase at the text position on each pass of 0x266c (one tick and a map redraw per pass; ~100 ms in the video, `re/notes/getkey-cursor-derivacion.md`) | IBM.CH 0x05–0x08, read from the pack's font, cut to the cell's width, one glyph every two ticks (110 ms): after the live bullet row when a command is awaited, after the echo in a getdir |
+
+**Where it lives:**
+- **Core** (`UiSession`): `set_console_layout()`, `set_console_ready()`, `console_cursor()` and the `UiTextCommand` flag. The wrapped lines carry the blank rows and the live prompt row, so Shift+Up / Shift+Down page by exactly what is drawn. The layout is off by default; a plain session's lines are unchanged.
+- **Which echoes start a command:** `command_echo()` (a key's own echo), the walk echo and the arena's echo events. Answers use the new `answer_echo()` and get no bullet and no blank row: Talk / Fire's direction word, Klimb's Up / Down, Ahead / Here / Left / Right.
+- **Device:** `AlphaRuntime::configure_session()` turns the layout on. It is one binder shared by `initialize()` and the host fixture: the fixture's copy of `initialize()` had hidden the layout from every runtime test until the first run showed it.
+- **Readiness:** `console_ready()` shows the prompt row and cursor only when the original would be in getkey. Nothing may be holding the keyboard: a paced scene; the dialogue pacer (TLK pauses, Mix's 10 ticks, rite effects); a map reveal or a moongate transit; the gem, zodiac or Z-stats views; a ritual effect, world effect or quake; an enemy's turn.
+- **Board:** the bullet is cell 0x10 of a row, in the world console and in the shop and picker logs. The cursor is one cell drawn on its own: a full frame places it and an animation frame moves it. A still frame redraws only that cell when the phase moves; the A3-04F census counts it as its own `cursor` class, so its transcript rules are unchanged.
+- **Found on the way:** the arena's (C)ast printed `Cast...` twice: the key's own echo (renamed from "Cast" in §8.5) and `combat_cast()`'s `Cast...\n` (the combat parity pin). The key no longer echoes (the ledger's D-75 note).
+
+**The lists:**
+- The party, inventory, equipment, spell and reagent pickers and the shop offers now select with kernel 0x2a28's reverse-video bar, as every menu has since A4-UI1, not a green `>`.
+- The bar is white across the panel's 134 px row and the row's whole 14 px pitch. The text stays where it was, and a row the bar leaves is black again.
+- The Developer screen keeps its `>`: it is not a game screen.
+
+**Adaptations (ledger A-18):**
+- the masks and glyphs are fitted to the device's cells;
+- the cadence is two ticks;
+- the cursor blinks only at command waits and getdir. The original also blinks it at yes / no, text, number and picker prompts; on the device their keys are shown in the context bar or the picker panel.
+
+**Rows:** D-76 (the console) and D-77 (the lists) are software fixed, hardware pending; A-18 is new; D-75 has a note for the arena's Cast.
+
+**Evidence:**
+- `a4_ui4_console_runtime`: 19 / 19 on the final tree; RED-first 1 / 19 against both bases (the GREEN one is the control C3).
+- The golden proof (`a4-ui4-console-golden-proof.log`).
+- Mutations C1–C13 and P1–P3: all killed.
+- Full suite 178 / 178.
+- Firmware: +3,248 B, 16,192 B free (§8.17).
+- Hardware: steps 3b, 3c and the additions to 7 and 10 (§8.18).
+
+### 8.21 Hardware status of A4-SAVE2, A4-SAVE3 and A4-UI3 (checked 2026-10-01)
+
+At the user's request each batch's own records were checked for a hardware PASS:
+- **A4-SAVE2:** §4.11 is a checklist with no result; §4.12 reads "pending". Its logs are host and firmware logs only. The commit that carried it (`d6457ab1`, A4-END1's) says their records are "their own sections, unchanged here", and the PASS in `e53741b2` is A4-END1's own.
+- **A4-SAVE3:** §5.15 / §5.16 "pending"; no DOS round trip recorded.
+- **A4-UI3:** §6.14 / §6.16 "pending".
+
+None records a PASS, so all three stay **pending**; the A4-END1 run on that tree is not counted for them. (§7's opening line calls that tree "hardware-validated"; of the four, only A4-SAVE1, §3.6, has its own PASS.)
+
+### 8.22 Hardware follow-up (2026-10-01)
+
+The user ran §8.18 on the A4-UI4 image (`FW 4.0.0-alpha4-ui4-debug`).
+- **Every step tested passed except two follow-ups:** step 9 (the shard ritual) and the console's height.
+- **Step 6 (the caret) passed** once found in the right place: H-63's `^` is the Armaments page's scroll marker, not a mark on the readied item.
+
+This is a hardware follow-up, not a feature batch. Nothing else changed: the moongates, the ending, save/load, the Refuge, the quake, the ritual's timing and the console's other rules are untouched.
+
+#### 8.22.1 The caret (H-63 / D-52)
+
+- **Hardware PASS.** The `^` renders on the Armaments inventory page when a list of more than seven entries is scrolled.
+- The checklist's wording was wrong; step 6 now describes H-63's own case (`ALPHA2_HARDWARE_CHECKLIST.md` H-63):
+  - Z-stats, page to Armaments, more than seven entries;
+  - scroll down: `^ v`, not `? v`;
+  - left/right still change the page.
+- No production change.
+
+#### 8.22.2 The shard ritual: a stale checklist, not a defect
+
+**What the hardware showed:**
+- Certification placed the party on the ritual cell.
+- One step south: a door.
+- `Y` `ASTAROTH`: "did nothing".
+- Back north, the Shard of Hatred printed only `...and cast it into the Flame of Love!`. No ritual effects.
+
+**What the code and the binary say:**
+
+| Question | Answer |
+|---|---|
+| Where the Certification puts the party | `apply_debug_certification(FlameShard)`: Empath Abbey (location 31), **floor 1, (15,3)**, by an explicit-coordinate teleport. It grants the three shards and leaves Shadowlord progression untouched (PART 9, by design). The party starts **on** the ritual cell. Facing is irrelevant (the town has none). |
+| The ritual's gates (CAST 0x15b4 → `cast_shard_into_flame()`) | the party on (15,3), location 31, floor 1 (else `No effect!`); then the tile at (x, y−1) is a Shadowlord, 0xFC (else silence after the Flame line); then the summoned index is the shard's, 1 (else silence) |
+| How the Shadowlord gets there (CMDS 0x1030 → `yell_in_world()`) | Yell the name **in the Flame room**; it lands at **(x, y−2)**. Gates: location 30–32; the name matches; y ≥ 2; **that Shadowlord alive** (0x1076, `[0x58c8+idx] != 0xff` = the port's `!quest_flag(HatredDead)`); none already present. Success is **silent**. |
+| So where the Yell happens | **one cell south of the ritual cell, (15,4)**: Astaroth appears on the Flame (15,2); one step north puts him directly above the ritual cell (`re/notes/shadowlord-ritual.md`, "Flujo completo") |
+| Was south → Yell → north stale? | **No.** It is the binary's own sequence, and Batch 25's S9–S10 pass it on the host. What the checklist omitted were two **preconditions**. |
+| Does the production ritual work? | **Yes**, through the device's own keys and Developer rows: `batch25_shard_ritual` A4–A8 (below). |
+
+**The cause of the hardware result (inferred; the save itself was not read):** Astaroth was already destroyed in the save.
+- A4-END1's route A applies **Preset: Endgame**, which sets all three `shadowlord-dead` flags. The Certification does not clear them.
+- With Astaroth dead, the original refuses the summons with `No effect!` (CMDS 0x1076). The shard then prints the Flame line and stops (CAST 0x16c1: no 0xFC above).
+- That is exactly the hardware result, and the only state found that produces it.
+- The other candidate, the hour, gives a different result. At 05–06 and 19–20 o'clock a monk steps onto (15,3) behind the party: the step north is `Blocked!` and the shard prints `No effect!`.
+- The photographed party (six maxed members, F:9993, G:9999) is consistent with the Developer presets.
+
+**Host proof** (`batch25_shard_ritual`, new block A, 9 checks, all through the Developer menu's rows and the device's keys):
+- **A1–A3** reproduce the hardware result:
+  - Preset: Endgame → Certification → south → Yell: `No effect!`, the Flame empty;
+  - north → Use Hatred: the header and the Flame line only, the shard kept.
+- **A4–A8** pass the corrected route:
+  - Quest / World: Quest flag 1, Toggle 0; Time: Hour 12;
+  - Certification on (15,3); south; a silent Yell;
+  - the composed view shows the Shadowlord (tile 252 + 256) on the Flame; north, with him directly above;
+  - Use Hatred: doom wrought, shard consumed, `HatredDead` set, Astaroth gone;
+  - Move answers.
+- **A9** is the hour control: at Hour 6 the step north is `Blocked!`.
+- Result: 51 / 51 GREEN; no production code changed, so no RED-first or mutation.
+- Step 9 of §8.18 now carries the corrected route.
+
+#### 8.22.3 The console's height
+
+**Measured:**
+- The console is the rectangle under the status box's rule, x 184–318, **y 88 to the glass (240)**. With a context bar up it ends at y 215.
+- The Board lays it out from `world_transcript_geometry()`:
+
+| Text | Cell | Rows (no bar) | Bottom | Rows (bar) | Before |
+|---|---|---|---|---|---|
+| Small | 5 × 7 | **21** = (240 − 88) / 7 | y 235 | **18** | 12 (19 laid out) |
+| Medium | 6 × 8 | **19** = 152 / 8 | y 240 | **15** | 12 |
+| Large | 8 × 10 | **15** = 152 / 10 | y 238 | **12** | 12 |
+
+**Why it showed 12:**
+- `UiSession::visible_lines()` returns at most `config_.page_rows`.
+- The device built its session with `{11, 12, 63}`: page_rows **12**, from before the 15–21-row layout.
+- So a full console drew 12 lines. Bottom anchoring put them at the bottom and left the top 3–9 rows black. That is the photo: 12 rows of 8 px, y 144–240, under 56 px of black.
+- **A second symptom of the same cap:** Shift+Up pages by the Board's row count (19 at Medium, `set_transcript_view_metrics`) while only 12 rows were shown. Each page skipped 7 lines.
+- Small had a cap of its own: the Board's row arrays (`kAlphaTranscriptLines`) held 19, the 8 px cell's count, so Small could not reach its 21 rows.
+
+**The fix** (no layout redesign; the viewport, status box and bars do not move):
+- `kConsoleMaxRows` (`device_ui_views.h`) = (240 − 88) / Small's 7 px = **21**. It sizes the Board's rows (`kAlphaTranscriptLines`).
+- `AlphaRuntime::session_config()` sets page_rows to it. So the Board's own geometry decides what is drawn: 21 / 19 / 15 rows, or 18 / 15 / 12 above a context bar.
+- The construction is one binder, `AlphaRuntime::construct_session()`. `initialize()` and the host fixture both call it; the fixture had its own copy of `{11, 12, 63}`.
+- Everything else is as it was:
+  - bottom anchoring;
+  - the bullet and its blank row;
+  - the wave cursor, and no cursor while scrolled back;
+  - Shift+Up / Shift+Down, which now page by exactly the rows drawn.
+
+**Host proof** (`a4_ui4_console_runtime`, new block H, 15 checks, real Board over the fake ST7789, per text size):
+- **H1:** a full console fills every row from y 88, each row inked exactly where its line has text.
+- **H2:** after the System Menu's full repaint, no console window starts above y 88 or runs past the console's bottom.
+- **H3:** the live prompt row is the last row; its bullet and the wave cursor fit inside it.
+- **H4:** Shift+Up moves back exactly the rows drawn, full and cursorless; Shift+Down brings the cursor back to the last row.
+- **H5:** with the context bar up (`Look-`), the rows stop above y 215 and the cursor follows `Look-` on the last row.
+
+**Results:**
+- **RED-first** (`tools/a4_ui4_hf1_red_first.py`, the follow-up's files swapped for their pre-follow-up copies): **25 / 34**. All nine REDs are H checks. The GREEN H checks are the controls: H2 Medium / Large, H3, H5 Large (whose 12 rows equalled the old cap). Log: `a4-ui4-hf1-console-red-first.log`.
+- **GREEN 34 / 34** (`a4-ui4-hf1-console-green.log`).
+- **Mutations:** 6 / 6 killed (`tools/a4_ui4_hf1_mutation_check.py`, `a4-ui4-hf1-mutation.log`):
+  - page_rows 12, 19, or one short;
+  - the cap from Medium's metrics;
+  - the Board's rows back to 19;
+  - the shared constructor ignoring `session_config()`.
+
+#### 8.22.4 Goldens
+
+- **`a4_ui1_goldens.h` is unchanged:** its screens hold fewer than 12 lines.
+- **`a3_04f_panel_goldens.h` moved** (G1: first difference at state 39).
+- **The proof** (`a4-ui4-hf1-golden-proof.log`): each panel state was hashed with the console rectangle (x 184–318, y 88–239) blanked. The pre-follow-up and the follow-up trees give the same **297 masked states, 0 differing**.
+  - The old files still pass the old golden, 17 / 17.
+  - 255 of the 301 unmasked states differ (39–300: from there the transcript holds more than 12 lines).
+- **Re-recorded twice:** the two files are byte-identical (SHA-256 `F59CBE3A…60E9`). The hashes went under the file's provenance header; G1 GREEN, 17 / 17.
+
+#### 8.22.5 Firmware and packs
+
+- **Version:** `PROJECT_VER` is now `4.0.0-alpha4-ui4-hf1-debug`. The retest image must never share a name or an `FW` line with the first image: both embed `Git e53741b23fbc-dirty`.
+- **Build:** clean, `build-a4-ui4-hf1` (`idf.py --no-ccache reconfigure`, then `ninja -j 4`), first attempt.
+- **Launcher:** `native/targets/tdeck/build-a4-ui4-hf1/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-hf1-Debug-Launcher.bin`. Byte-identical to `openu5_tdeck.bin`; embeds `4.0.0-alpha4-ui4-hf1-debug` and `e53741b23fbc-dirty`.
+- **SHA-256** `1d57efcefec3eec385a36b753f1e57a4d4825d3b03ab3726f30ab14737be3a44`.
+- **Size:** **1,032,528 B (`0xfc150`), +144 B** against the first A4-UI4 image. **16,048 B (2 %) of the 1 MiB app partition free.**
+- **By section** (`a4-ui4-hf1-fw-size-diff.log`): flash `.text` −56; internal **`.data` +208**. That is the Board's two extra cached rows: the Board is a static object, so its members are internal `.data`. IRAM and PSRAM are unchanged.
+- **Stack:** `Board::render()`'s row buffer grows by two rows on the game thread's stack (about 200 B).
+- **ELF guards** (`a4-ui4-hf1-elf-checks.log`): hot path GREEN. The IRAM check's one RED is the pre-existing `speaker_segment_frames`, unchanged since A4-END1.
+- **Packs unchanged, so no SD recopy:**
+  - resource pack 2,266,819 B, SHA-256 `85b38994…d01e`;
+  - tile pack 132,284 B, `6eb001ed…e188`;
+  - audio pack 56,148 B, `28c1533b…a6d3`.
+
+#### 8.22.6 Mini retest (the follow-up image)
+
+0. **Flash** `build-a4-ui4-hf1/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-hf1-Debug-Launcher.bin` (SHA-256 `1d57efce…3a44`). Keep the SD card as it is. The identity screen must read **`FW 4.0.0-alpha4-ui4-hf1-debug`**; **stop if it reads `…-ui4-debug`.**
+1. **The console's height** (Continue, Medium text):
+   - Press **Space** about 15 times. The console fills the **whole black area** from just under the status box down to the bottom edge: **19 rows**, no black band above them. The newest `►` + wave is still on the last row.
+   - **Shift+Up:** the previous page, full, with no wave. Press it again if the history allows. **Shift+Down** back to the bottom: the wave returns on the last row.
+   - **L** (the context bar opens): the rows stop above the bar, and the wave follows `►Look-` on the last row above it. Roll a direction to finish.
+   - Alt+M → Settings → Text **Small**: about **21** rows, filling to the bottom. **Large:** about **15** rows. At each size the `►` and the wave fit their cells, and nothing overlaps the status box or the bars. Back to **Medium**.
+2. **The shard ritual:** before changing it, note what **Toggle quest flag** reads with Quest flag `1` selected: `1` confirms §8.22.2's cause; `0` means Astaroth was alive and the first run failed for another reason (report it). Then §8.18 step 9 as now written (Astaroth alive, Hour 12, Certification, south, a silent Yell with Astaroth appearing on the Flame, north, Use Hatred). Expect the seven bursts and `The doom of the Shadowlord Astaroth is wrought!`.
+3. **Optional:** Developer → Diagnostics → Audio/render stats: the internal heap figures look as before. The image's internal `.data` grew by 208 B.
+4. **Report:** the `FW` line, PASS/FAIL for 1 and 2, and a photo of a full Medium console.
+
+#### 8.22.7 Status
+
+| Axis | State |
+|---|---|
+| Caret (step 6, H-63 / D-52) | **hardware PASS** (2026-10-01) |
+| Shard ritual (step 9) | checklist corrected; production unchanged and host-validated through the menu route; **retest pending** (§8.22.6 step 2). D-67's bursts have not yet been seen on hardware |
+| Console height | **software fixed**; RED-first 25 / 34 → GREEN 34 / 34; mutations 6 / 6; **retest pending** (§8.22.6 step 1) |
+| Suite | **178 / 178** serial (151.66 s, `a4-ui4-hf1-ctest.log`) |
+| Firmware | `0xfc150`, 16,048 B free; SHA-256 `1d57efce…3a44` |
+| A4-UI4/PRES1 | **open** until the T-Deck retest; nothing committed, tagged, pushed or flashed |
+
+## 9. A4-PARITY1 — release-readiness parity sweep
+
+A final parity audit before an Alpha 4 release candidate, then the fixes the user ruled release-blocking. Investigation first (no production change), then reference-first fixes. The audit's own axis is `GAMEPLAY_INTEGRATION_AUDIT.md`, "Alpha 4 A4-PARITY1"; the ledger rows are D-50, D-78 – D-82, A-19, A-20.
+
+### 9.1 Baseline
+
+- `main` at `e53741b2` (tag `alpha4-end1-hardware-validated`) **plus the uncommitted A4-UI4/PRES1 + hf1 tree** (45 tracked files changed, 55 untracked). That tree is still hardware-retest pending (§8.22.6); its image is untouched: `build-a4-ui4-hf1/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-ui4-hf1-Debug-Launcher.bin`, 1,032,528 B, SHA-256 `1d57efcefec3eec385a36b753f1e57a4d4825d3b03ab3726f30ab14737be3a44` (re-hashed before and after this batch). Every PARITY1 build uses new directories.
+- A copy of the UI4/hf1 working tree (its 45 changed and 55 new files) was kept outside the repository before any edit, so the UI4 commit can still be made without PARITY1 (`C:\dev\parity1-scratch\ui4-hf1-baseline`; the patch `baseline-tracked.patch`).
+- Host: a fresh build of that tree, serial ctest **178 / 178** (157.16 s).
+- Packs: resource 2,266,819 B `85b38994…d01e`, tiles 132,284 B `6eb001ed…`, audio 56,148 B `28c1533b…`.
+
+### 9.2 The audit and the user's decisions
+
+The investigation report (2026-10-01) reconciled the ledger, this document, the audit, the hardware checklist and the Alpha 2/3 records, and proposed the scope below. The user decided:
+
+| # | Item | Decision |
+|---|---|---|
+| 1 | NEW-1, the palace crown gate (D-78) | **RC blocker — fix** |
+| 2 | P1b, Use crown's time-spell write (D-79) | **include**, if the bytes confirm it (they do, §9.4) |
+| 3 | NEW-2, the dungeon's command keys (D-81) | **RC blocker — fix** M, N and the B / E / P / T / Y strings as one pass |
+| 4 | NEW-3, `speaker_segment_frames` in flash | **RC blocker — smallest targeted change** |
+| 5 | D-50, the well's case-folding | include only if small and self-contained (it is, §9.8) |
+| 6 | the credits curtain, the intro's story plates, the title's walking figures | **deferred past Alpha 4** |
+| 7 | D-60 | a documented deliberate row (A-19) |
+| 8 | D-1, D-2 | stay deferred |
+| 9 | D-7 | documented as the intended Movement Mode contract (A-20) |
+| 10 | the RC build | stays Debug, with the Developer menu |
+| 11 | NEW-4, the underworld skiff | classify; fix only if a tiny, sourced omission (it is not, §9.8) |
+| 12 | push | nothing |
+| 13 | the UI4/hf1 artifact | untouched; UI4/PRES1 stays hardware-retest pending |
+
+### 9.3 NEW-1 — the palace gate reads possession (D-78)
+
+**The binary** (independently re-derived this batch; every overlay and ULTIMA.EXE scanned for instructions on `[0x57b3..0x57b5]`):
+
+| Address | Instruction | Meaning |
+|---|---|---|
+| SJOG 0x16e6 | `mov byte [0x57b4], 0xff` | the **only** writer: the Get of the crown |
+| CAST 0x0e45 | `cmp byte [0x57b4], 0` / `je 0x0e53` ("Absorbed!") | the out-of-combat gate in location 0x12 |
+| COMBAT 0x092f | `cmp byte [0x57b4], 0` / `jne 0x095e` | the arena's twin (after 0x0928's `'N'` test) |
+| ZSTATS 0x09e1 | `mov al, [0x57b4]` | the inventory display |
+
+`[0x57b4]` is SAVED.GAM +0x20E (the window starts at DS 0x55A6): `lbArtifacts.crown` in the reference, `quest.artifacts[1]` in native — the crown's **possession**. Both ports gated on a separate "worn" flag (`wornCrown` / `worn_crown`) that only (U)se set and no save carried: a party that picked the crown up in the palace still had its spells absorbed until it "wore" it, and again after any load.
+
+**The fix.** `castAbsorbedOutOfCombat` / `combatCastAbsorbed` (reference) and `cast_spell` / `combat_cast` (native) read possession. The parity drivers (`generate-magic-fixtures.ts`, `generate-advanced-combat-fixtures.ts`, `magic_parity_test`, `advanced_combat_parity_test`) now feed possession from the same expression the worn flag used, so the NEW-1 change alone leaves both corpora byte-identical; the RED proof is native against the corrected drivers (§9.12).
+
+### 9.4 P1b — the worn crown is time spell 0x1c (D-79)
+
+**The binary:** CAST 0x193e prints "Crown", pushes 0x1c to the toggle 0x1764 (if `[0x587a]` already holds it: "Removed!", `[0x587a]` = `[0x588e]` = 0, `[0xa9fa]` = 1) and otherwise prints "Thou dost don the Crown of Lord British...", pushes 0x1c / 0xff / 9 and calls 0xc132 — with CAST's load base 0xBF80, kernel 0x80b2, an overlay thunk (load overlay 0x12, `ljmp 0:0xead8`) to CAST2 0x08f8, `set_time_spell(anim, turns, status)`: `[0x587a]` = 0x1c, `[0x588e]` = 0xff, then the animation 9. The amulet (0x1908, value 0x0e) and the badge (0x1b47, 0x1d) use the same byte; the reference had already corrected the badge the same way.
+
+**The fix.** `useCrown` (reference) and `use_quest_item` (native, the crown joins the amulet / badge arm) toggle `timeSpell` 0x1c with 255 turns. The worn crown therefore replaces Quickness, Negate or any other time effect, is removed by a second Use, and is saved and loaded with the time spell (SAVED.GAM 0x2D4 / 0x2E8). `wornCrown` / `worn_crown` stay in the state for old saves but are no longer written. The animation 9 is not drawn (as for the amulet and badge).
+
+### 9.5 P1c — Negate and the worn crown stop enemy magic (D-80)
+
+Proving P1b found the time-spell byte's readers: 0x1c is read in three places, each beside Negate's 'N', and neither port had any of them:
+
+| Site | Instructions | Effect with `'N'` or 0x1c |
+|---|---|---|
+| COMBAT 0x0185–0x019b | after the 50 % roll (0x017a), `test word [type*2 + 0x153c], 0x8000` (LE 0x8000 = the clone's `rangedMagic`, `re/notes/combat.md` §11) | a magic projectile is **not fired** (0x019d: the roll's own "no shot") |
+| COMBAT 0x0f27–0x0f3b | `test word [...0x153c], 0x2000` (teleport) | no teleport and no `rand(0,3)`; the creature moves normally (0x0fab) |
+| COMSUBS 0x0112–0x011e | before any special (`re/notes/comsubs-ataque-jugador.md` §19, where 0x1c was "unnamed") | no possession, invisibility or daemon, **zero draws** |
+
+**The fix.** `negatesEnemyMagic()` (reference) / `negates_enemy_magic()` (native) and the three gates, at the same points of `enemyAttack`, `enemyMove` and `enemySpecial` / `enemy_attack`, `enemy_move` and `enemy_special`. Negate magic (In An, the spell and the scroll) now does what the original's does to a mage or a daemon; the worn crown does the same.
+
+**The corpus.** The default combat corpus mounts none of the gated abilities and no time spell. `generate-combat-fixtures.ts --negate` (new; default and real-arena modes unchanged, `--check` byte-identical) mounts exactly them — rangedMagic, teleport, possess, invisibility, daemon — under no time spell, 'N' and 0x1c, and fails if a gated ability fires under 'N' or 0x1c (`NEGATE_FORBIDDEN`) or if none fires without one. `combat_parity_tests ... --negate` replays it draw by draw: `fixtures/combat-negate.txt`, 56,160 rows (ctest `combat_negate_parity`, drift `typescript_combat_negate_fixture_drift`).
+
+### 9.6 NEW-2 — the dungeon's command keys (D-81, closes D-4)
+
+**The binary** (`re/notes/dungeon-dispatch-gates.md` §3, re-read; the strings re-read from DATA.OVL by offset): DUNGEON.OVL's `sub_06C4` handles only movement, `5`, the digits, Enter / `.` and two control keys, and hands every other key to the shared kernel dispatcher (0x07a0 → 0x3178). M (CMDS 0x1AD8) and N (CMDS 0x0DDC) are therefore the overworld's handlers, ungated underground; the refusals print:
+
+| Key | Original output (DATA.OVL) | Turn |
+|---|---|---|
+| B | `Board ` (DS 0xa13a) + `\nNot here!\n` (0x4252) | yes |
+| E | `Enter what?\n` (0xa156) | yes |
+| F | `Fire-` (0xa164) + `What?\n` (0x42e4) | yes |
+| P | `Push\nNot here!\n` (0xa1d4) | no |
+| T | `Talk-Funny, no response!\n` (0xa22c) | yes |
+| X | `X-it ` (0xa280) + `what?\n` (0x4368) | yes |
+| Y | `Yell what?` + a word, then `\nNo effect!\n` (CMDS 0x14ac, DS 0x453a) | no |
+
+**The device before:** M opened **Cast** (A-7's "alias"), and every other key here printed the kernel default "What?" with no turn. The core already accepted Mix and New order underground (`commands.cpp` handles both before the dungeon gate).
+
+**The fix** (`UiSession::handle_dungeon`, plus one core branch): M = the overworld's Mix ("Mix Reagents", the spell list for a mix, the reagent picker); N = New order's party picker; B / E / F / T / X print their row(s) and spend the dungeon's cast turn (`DungeonAction::Tick`: the clock, the dungeon's tick, the Refuge check — the reference's `dungeonSpellTurn`); P prints and spends nothing; Y asks for its word and the core answers through `yell_in_world()`'s own "\nNo effect!\n" branch (a new pass-through before the dungeon gate). D keeps the E-3 "Drink"; Q keeps the device shell (A-5). A-7 loses its Mix clause.
+
+### 9.7 NEW-3 — the IRAM guard
+
+`a3_04b_iram_check` was GREEN on Alpha 3's release image and RED on the A4-END1, A4-UI4 and hf1 images: `speaker_segment_frames` (16 instructions), called by `SpeakerVoice::begin_segment` (IRAM) on the audio task, had become an out-of-line flash function. One entry in `main/audio_iram.lf` places it in IRAM again; `a3_04b_perf` gains **I1b** (the entry is present). The ELF guard on the new image: §9.16.
+
+### 9.8 D-50 (fixed) and NEW-4 (D-82, deferred)
+
+**D-50.** The well matches with kernel 0x6f1e (LOOKOBJ 0x00aa; `native/core/batch52-h22-wish-stristr-disasm.log`). The clone, in the reference (`kernelStristr`) and native (`look.cpp`), is exact: each byte loses bit 7 (`and 0x7f7f`) and is folded with `and 0x5f` when above 0x60; a needle longer than the haystack is −1; and after a mismatch the start advances by the characters already matched plus one, so the original misses an overlapping match ("HHorse" does not contain "Horse") — kept. Small and self-contained: one function a port, no other text input changed. `horse` and `HORSE` now work as `Horse` did (the T-Deck types lower case).
+
+**NEW-4 → D-82, deferred.** INIT.OOL / UNDER.OOL seed five outdoor objects in the underworld: slot 23, a `SkiffRight` (0x29) at (14,242); slots 24–27, four `DeadBody` (0x1e) beside the Amulet's cell (105,225) (`re/notes/moonstone-loc-y-pozo-doom.md` §2.5; BRIT.OOL seeds nothing). Neither port places them: both read `init.ool` only as the template for **writing** SAVED.OOL. Not fixed: how the original reads `.OOL` into the actor table is not derived (the same note, §2.4), the skiff's Native representation is open (A4-SAVE3 carries it as a terrain cell), and the change would move new-game state in both ports and their fixtures. Not a blocker: a skiff also travels with a ship, and the bodies are decor.
+
+### 9.9 Deliberate rows and the ledger
+
+- **A-19** (was D-60): audio never paces the game; the fanfare plays while play continues.
+- **A-20** (was D-7): dungeon keyboard movement is the Movement Mode contract.
+- **A-7** revised (no Mix alias); **A-9 / A-10 / A-12** keep their behaviour, with the stale "ASCII-only" cause corrected.
+- **Stale rows struck from their own records** (no hardware status raised): D-17 (the function is in the map's *discarded* sections — dead source, not image bytes), D-21, D-22 (7E-G accepted), D-44 – D-46, D-49 (7E PASS), D-47 (7E-E accepted), D-55 (7E-A′ PASS), D-53's `To phase:` half (7E-C PASS).
+- Not changed: A4-SAVE2 / SAVE3 / UI3 stay hardware pending (§8.21); the UI4/PRES1 rows stay software fixed, hardware retest pending.
+
+### 9.10 Files
+
+- **Reference** (`game/src/core/`): `magic/cast.ts`, `combat/combat.ts`, `endgame/use-tools.ts`, `world/wishingwell.ts`, `world/blackthorn.ts` (`TIME_SPELL_CROWN`); `game/src/main.ts` (the arena gate's caller).
+- **Reference tests** (`game/tests/`): `cast-absorbed-gate`, `use-tools`, `shrines`, `combat-spells`.
+- **Native core:** `src/magic.cpp`, `src/combat.cpp`, `src/combat_magic.inc`, `src/quest_world.cpp`, `src/commands.cpp`, `src/look.cpp`, `src/ui_session.cpp`.
+- **Device:** `main/audio_iram.lf`; `CMakeLists.txt` (`PROJECT_VER` `4.0.0-alpha4-parity1-debug`).
+- **Corpora and drivers:** `tools/generate-combat-fixtures.ts` (`--negate`), `tools/generate-magic-fixtures.ts`, `tools/generate-advanced-combat-fixtures.ts`; `fixtures/advanced-combat.txt` (+ coverage) regenerated, `fixtures/combat-negate.txt` (+ coverage) new; `tests/combat_parity_test.cpp` (`--negate`), `tests/magic_parity_test.cpp`, `tests/advanced_combat_parity_test.cpp`.
+- **Tests:** `targets/tdeck/host_tests/a4_parity1_runtime_test.cpp` (new), `tests/a3_04b_perf_test.cpp` (I1b), `tests/ui_session_test.cpp`; `native/core/CMakeLists.txt` (3 new ctest entries).
+- **Tools:** `tools/a4_parity1_red_first.py`, `tools/a4_parity1_mutation_check.py`.
+- **Docs:** this section, the ledger, the audit.
+
+### 9.11 Existing tests changed on purpose
+
+- `ui_session_test.cpp`: dungeon `m` asserted the Cast alias (`UiRequestId::Spell`); now Mix (`UiRequestId::Custom`).
+- `game/tests/cast-absorbed-gate.test.ts`: the palace case set `wornCrown`; it now sets `lbArtifacts.crown` (the reference's FAIL set showed this one case and no other).
+- `magic_parity_test` / `advanced_combat_parity_test` and their generators: the crown input is possession.
+
+### 9.12 New tests and RED-first
+
+| Test | What | RED-first | GREEN |
+|---|---|---|---|
+| `a4_parity1_runtime` (real runtime and Board, raw keys) | C1–C4 the crown (a cast in the palace with the crown carried, the control without it, Use writes 0x1c permanent and replaces Quickness, it survives Alt+S / Alt+L, a second Use removes it); D1–D4 the dungeon keys (M, N, the six refusals with their turn cost, Y); W1–W4 the well (`horse`, `HORSE`, `HHorse` no match, the `Horse` control) | **2 / 18** against the pre-PARITY1 production (`tools/a4_parity1_red_first.py`; the two GREEN are the controls C2 and W4) | **18 / 18** |
+| `magic_parity`, `advanced_combat_parity` (drivers feed possession) | NEW-1 | RED on the unfixed native | GREEN |
+| `combat_negate_parity` (new corpus) | P1c, draw by draw | RED on the unfixed native | GREEN |
+| `a3_04b_perf` I1b | NEW-3 | RED (only I1b) | GREEN |
+| reference vitest (new cases in 4 files) | possession, 0x1c, `negatesEnemyMagic`, `kernelStristr` | **6 / 90 RED** on HEAD's reference (`a4-parity1-ts-red-first.log`) | 90 / 90 |
+
+### 9.13 Parity corpus diffs (`native/core/a4-parity1-corpus-diff.log`)
+
+| Corpus | Change | Proof |
+|---|---|---|
+| `magic.txt` (25,088) | none | `--check` byte-identical |
+| `combat.txt` (97,344) | none | `--check` byte-identical |
+| `advanced-combat.txt` (125,440) | 2,794 rows | every changed row is a Negate scenario — variant 18 (`timeSpell 'N'`) or spell 32 (In An); **0 rows outside**, 0 scenario keys changed |
+| `combat-negate.txt` (new, 56,160) | vs a corpus generated from the **unfixed** reference: 16,256 rows | only 'N' and 0x1c rows change (none of the no-spell rows); gated-ability texts under 'N' / 0x1c: 86 / 87 → 0 / 0, without a spell 213 → 213 |
+| live `gameplay_parity` (4,802 driver rows) | 9 rows | 4 wishes (D-50), 4 combats reading scroll 3 (In An → 'N', D-80), 1 Use crown in combat (D-79 / D-80) |
+| live `quest_parity` (5,377) | 6 rows | all Use crown: only `timeSpell` (→ 0x1c) and `timeSpellTurns` (→ 255) |
+
+### 9.14 Mutations
+
+`tools/a4_parity1_mutation_check.py`: 31 mutants, each one production edit (24 native, 7 in the reference). A native mutant is rebuilt and checked against `magic_parity`, `advanced_combat_parity`, `combat_parity`, `combat_negate_parity`, `ui_session`, `a4_parity1_runtime`, `gameplay_parity`, `quest_parity` and `a3_04b_perf`; a reference mutant against the touched vitest suites, the four corpus generators under `--check` and the live `gameplay_parity` / `quest_parity`. **31 / 31 killed**, 0 survived, 0 invalid; the restored tree GREEN on both sides (`native/core/a4-parity1-mutation.log`).
+
+| Fix | Mutants | Killed by |
+|---|---|---|
+| NEW-1 | N1 the world gate reads the worn flag; N2 the arena gate does; N3 the palace absorbs whatever is carried | `magic_parity` + runtime C1; `advanced_combat_parity`; `magic_parity` + C1 |
+| P1b | N4 Use crown toggles the flag again; N5 the worn crown lasts 20 turns; N6 it writes the amulet's 0x0e | runtime C3 / C4 + live `gameplay_parity` / `quest_parity`; runtime + `quest_parity`; runtime |
+| P1c | N7 / N9 / N10 each gate removed; N8 the projectile gate before the roll; N11 / N12 only 'N' / only 0x1c | `combat_negate_parity` (N7–N10), `advanced_combat_parity`, live `gameplay_parity` |
+| NEW-2 | N13 M is Cast again; N14 N is "What?"; N15 / N20 B / F without the turn; N16 P with one; N17 / N19 / N21 T / X / E's strings; N18 the core refuses Yell | `a4_parity1_runtime` (and `ui_session` for N13) |
+| D-50 | N22 case-sensitive again; N23 a plain substring search (the skip dropped) | runtime W1 / W2 + live `gameplay_parity`; runtime W3 |
+| NEW-3 | N24 the fragment entry removed | `a3_04b_perf` I1b |
+| reference | T1 the world gate on `wornCrown`; T2 Use crown sets the flag; T3 only 'N'; T4 / T5 / T6 each gate removed; T7 case-sensitive | vitest + `generate-magic --check`; vitest + live parity; the negate / advanced corpora `--check` + live parity; vitest + live parity |
+
+Not mutated, declared: two details of 0x6f1e cannot be observed on the device — the fold's threshold (0x60 itself) and the bit-7 strip — because the six needles are letters and the keyboard types ASCII; the reference's unit test pins both.
+
+### 9.15 Host results
+
+| Run | Result | Log |
+|---|---|---|
+| Baseline (a fresh build of the UI4/hf1 tree, outside the repository) | **178 / 178**, 157.16 s | `C:\dev\parity1-scratch\ctest.log` (scratch; numbers recorded here) |
+| RED-first, parity drivers against the unfixed native | `magic_parity`, `advanced_combat_parity`, `combat_negate_parity` RED; `combat_parity` (control) GREEN | `a4-parity1-red-p1-parity.log` |
+| GREEN, the same set + the four drift checks | 8 / 8 | `a4-parity1-green-p1-parity.log` |
+| RED-first, `a4_parity1_runtime` (pre-PARITY1 production) | **2 / 18** (the controls C2, W4) | `a4-parity1-red-first.log` |
+| GREEN, `a4_parity1_runtime` | **18 / 18** | `a4-parity1-runtime-green.log` |
+| `a3_04b_perf` I1b | RED → GREEN | `a4-parity1-red-new3-i1b.log`, `a4-parity1-green-new3-i1b.log` |
+| First full run | 180 / 181: `ui_session` (the dungeon M assertion, changed on purpose, §9.11) | `a4-parity1-ctest-pass1.log` |
+| **Full suite, final tree** | **181 / 181**, serial, 158.26 s; host build 0 warnings. 181 = 178 + `combat_negate_parity`, `typescript_combat_negate_fixture_drift`, `a4_parity1_runtime`. The SAVE (A4-SAVE1/2/3, A4-UI3, A3-04G, Batch 28), combat (`combat_parity`, `advanced_combat_parity`, real arenas, A3-HF1/HF3), dungeon, UI (A4-UI1 – UI4), END1 and audio (A3-01 – A3-05) groups are inside it, all GREEN | `a4-parity1-ctest.log` |
+| Reference | `tsc --noEmit` clean; vitest 7,735 tests (+7), assertion-level FAIL set **identical** to the A3-HF10 baseline (97); reference RED-first 6 / 90 → 90 / 90 on the touched files | `a4-parity1-vitest.log`, `a4-parity1-ts-red-first.log` |
+
+### 9.16 Firmware and packs
+
+Built from scratch in a new directory, `build-a4-parity1` (`idf.py --no-ccache -B build-a4-parity1 reconfigure`, `ninja -C build-a4-parity1 -j 4 all` 1180 / 1180 at the first attempt, `python package_launcher.py --build-dir build-a4-parity1`; `native/core/a4-parity1-{idf-export,fw-configure,fw-build,package}.log`). No project warnings: the only warning lines are ESP-IDF's "nearly full (1 % free)" notice and its `component_validation` notices.
+
+- **Launcher:** `native/targets/tdeck/build-a4-parity1/launcher/OpenU5-TDeck-Alpha4.0.0-alpha4-parity1-Debug-Launcher.bin`, byte-identical to `build-a4-parity1/openu5_tdeck.bin`.
+- **SHA-256** `72fc1aeebf37db8ca5761cb24fc62ae5689683db8bc462ccc3bf40bd4a1dd306`.
+- **Embedded** (read back): `FW 4.0.0-alpha4-parity1-debug`, `Git e53741b23fbc-dirty` (`a4-parity1-image-identity.log`).
+- **Size: 1,033,232 B (`0xfc410`), +704 B** against the hf1 image (`0xfc150`), inside the batch's ~1 KB budget. **15,344 B (1.5 %) of the 1 MiB app partition free** (was 16,048 B).
+- **By section** against the hf1 image (`a4-parity1-fw-size-diff.log`): flash `.text` +600, `.rodata` +64; DIRAM `.text` +36 (`speaker_segment_frames`, now in IRAM); internal `.data` / `.bss`, IRAM and PSRAM unchanged.
+- **ELF guards** (`a4-parity1-elf-checks.log`): `a3_04a_hotpath_check` GREEN; **`a3_04b_iram_check` GREEN** again (only the three by-design per-event / one-time functions stay in flash); `a3_04f_image_check` GREEN.
+- **Packs unchanged, no SD recopy:** resource 2,266,819 B `85b38994…d01e`; tiles 132,284 B `6eb001ed…`; audio 56,148 B `28c1533b…`. No save-format change: the worn crown rides the existing time-spell fields (SAVED.GAM 0x2D4 / 0x2E8); cross-image loading was not tested.
+- **The hf1 image is untouched:** `1d57efcefec3eec385a36b753f1e57a4d4825d3b03ab3726f30ab14737be3a44`, re-hashed after this build.
+- **Not flashed.**
+
+### 9.17 What remains before an Alpha 4 RC
+
+**No known software blocker remains** for an Alpha 4 RC: the four gameplay defects the audit found (D-78 – D-81) and the IRAM regression are fixed and host-proven; D-50 is fixed; D-82 is a queued, non-blocking divergence.
+
+What stands between this tree and an RC:
+
+1. **The UI4/PRES1 hf1 retest** (§8.22.6, on the hf1 image as planned), then UI4/PRES1's own commit and closeout. PARITY1 must not be folded into that commit: `C:\dev\parity1-scratch\parity1-only.patch` holds PARITY1 alone against the saved UI4/hf1 tree.
+2. **PARITY1's commit** (software-only, hardware pending).
+3. **The RC image** built after both commits (`4.0.0-alpha4-rc1-debug`, a clean committed tree so `Git` names the commit), and its RC record (an `ALPHA4.md`, the Launcher table).
+4. **One consolidated hardware session** on that image (§9.18).
+
+Hardware-validation debt it settles (none of it is raised here without evidence):
+
+| Item | Class | Where |
+|---|---|---|
+| A4-SAVE2 (§4.11), A4-UI3 (§6.14 A) | tested indirectly (Continue, Alt+S / Alt+L and the slot rows ran in the END1 and UI4 sessions) but never recorded | RC part 4 |
+| A4-SAVE3 on the device (§6.14 B steps 1–7) | never tested | RC part 5 |
+| A4-SAVE3's real-DOS round trip (§5.15 B / C) | never tested; needs a DOS install | RC part 5, optional — without it the RC notes must say the PC bridge is host-validated only |
+| UI4/PRES1: the console height, D-67's bursts (and the shard route) | retest pending (§8.22.6) | before the RC, or RC part 2 |
+| UI4/PRES1's other rows (D-12, D-48, D-53, D-68, D-69, D-71, D-72, D-74, D-75, D-76, D-77) | passed on the first UI4 image, not yet recorded (UI4's closeout records them) | UI4 closeout |
+| PARITY1: D-50, D-78 – D-81 | never tested | RC part 3 |
+| A4-END1's dead-companion revival | not physically tested (no Developer kill) | optional; automated evidence stands |
+| The Alpha 4 heap capture | owed: internal `.data` + `.bss` grew 1,104 B across Alpha 4 (A3 trigger 6, cumulative) and an RC needs its capture (trigger 7) | RC part 6 |
+| SAVE2's `SAVE_CATALOG` cold / warm times | never measured | RC part 4 (serial) |
+
+Category D (no physical run owed): H-51, H-84, H-128, H-129, H-136 / H-138 (superseded by H-201), H-139 / H-140 (known D-8), H-123 (certified by `quest_parity`).
+
+### 9.18 The consolidated Alpha 4 RC hardware checklist (proposed)
+
+One session, about 2 hours (plus an optional DOS round trip), on **the RC image** (built after the UI4/PRES1 and PARITY1 commits). Parts 1 and 3 can also be run on this batch's image if PARITY1 is to be seen before the RC is built. Serial capture from power-on through part 6 (`python -m esp_idf_monitor -p COMx -b 115200 --no-reset 2>&1 | Tee-Object -FilePath a4-rc1-capture.log`; afterwards `python native/core/tools/a3_04g_hw_closeout.py a4-rc1-capture.log`).
+
+**0. Before anything.** Copy the SD card's whole `ultima5/` folder to a PC (`saves/`, `settings.json`, the packs) and keep it. The packs stay as for A4-END1 (resource `85b38994…`, tiles `6eb001ed…`, audio `28c1533b…`); nothing to recopy. Flash the RC image. The identity screen must show its `FW` and `Git`, `RES … 2266819B` and `ASSET … 132284B`. **Stop if not.**
+
+**1. Boot and title.** Splash "Alpha 4"; the main menu's footer names `J C T U A R S P`; Small text legible; Journey Onward → Continue loads your journey with its music.
+
+**2. A4-UI4/PRES1** (skip whatever the hf1 retest already passed): §8.22.6 step 1 (19 / 21 / 15 rows, the ► and the wave, Shift+Up / Down) and step 2 (the shard ritual: seven bursts with their crackle, "The doom of the Shadowlord Astaroth is wrought!").
+
+**3. A4-PARITY1.**
+- 3.1 **The crown carried, not worn** (D-78). Alt+D → Quest Items → **Crown of Lord British: On**. Alt+D → Inventory → Inventory index **4** → Spell quantity **3** (Mani). Stats → Current MP **30**. Teleport → **Palace of Blackthorn**, default entrance On. **C** → Mani → the Avatar: `Success!` — **not** `Absorbed!`.
+- 3.2 **Control.** Quest Items → Crown **Off**; **C** → Mani: `Absorbed!`, no MP spent. Crown back **On**.
+- 3.3 **Wearing it** (D-79). **U** → Crown: `Thou dost don the Crown of Lord British...`. **Alt+S**, walk a few steps, **Alt+L**. **U** → Crown: `Removed!` (it was still worn after the load). **U** → Crown again to wear it.
+- 3.4 **Optional, Negate in a fight** (D-80): with the crown worn, or after casting In An, fight a spell-casting monster: it fires no magic missile; a teleporting one does not teleport. (Draw-by-draw host evidence: `combat-negate.txt`.)
+- 3.5 **The dungeon keys** (D-81). Teleport → **Deceit**, default entrance On. Note the HUD clock.
+  - **M**: `Mix Reagents` and the spell list (not `Cast...`). Mic.
+  - **N**: the party picker (New order). Mic.
+  - **B**: `Board`, `Not here!`. **E**: `Enter what?`. **F**: `Fire-What?`. **T**: `Talk-Funny, no response!`. **X**: `X-it what?` — each advances the clock.
+  - **P**: `Push`, `Not here!` — the clock does not move.
+  - **Y**: `Yell what?`; type `ABC`, Enter: `No effect!`; the clock does not move.
+- 3.6 **The well** (D-50). Teleport → **Paws**, X **4**, Y **21**, default entrance **Off** (the well is the cell to the west). **L**, roll west: `Drop a coin?` → **Y** → `Thy wish?` → type `horse` (lower case), Enter: `Poof!` and a horse appears east of the party; gold −1.
+
+**4. A4-SAVE2 + A4-UI3** (from §4.11 and §6.14 A, condensed; the card backup from step 0 is the safety net).
+- 4.1 Journey Onward: `Latest: Slot N, …`; Load Game: two-row slots, `LATEST` on N, empty slots `EMPTY`.
+- 4.2 Three places A, B, C saved into Slots 1, 2, 3 (an occupied slot asks `Overwrite Slot N?` with **No, keep it** first; No → `Slot N kept`; Yes → the menu closes, `Save complete: Slot N`).
+- 4.3 Load each slot in game: the place and party match; `CURRENT` follows the load.
+- 4.4 Return to Title: the footer names the slot saved last; Continue loads it. Alt+S then Alt+L stay in the current slot.
+- 4.5 Power-cycle: the same three rows; each loads its own state.
+- 4.6 Create New Character with every slot used: `Replace Slot N?`, No → back to the list, nothing changed.
+- 4.7 Text Large: two rows per slot, nothing clipped; back to Medium.
+- 4.8 Optional (PC): delete the newest `.json` of one slot's pair: the row reads `RECOVERED`, Enter loads the save before, `Recovered previous save (Slot N)`.
+- 4.9 Serial: the first and a second System Menu open's `SAVE_CATALOG … total_us=` (cold / warm).
+
+**5. A4-SAVE3, the PC bridge** (§6.14 B).
+- 5.1 With DOS `SAVED.GAM` + `SAVED.OOL` (your own, or `original/u5/ultima5/`) in `ultima5/import/`: title → **P** → `PC save: <Avatar>, <place>` → Import into an EMPTY slot → `Imported into Slot N. The PC files are kept`. Load it: party, place, gold, food, date and any ship as in DOS (townsfolk at their posts for the hour). Save, power-cycle, load again.
+- 5.2 Change something (odd gold), save, PC Save Transfer → Export → `Slot N written to /ultima5/export/slotN`; on the PC the folder holds `SAVED.GAM` (4,192 B), `SAVED.OOL` (512 B), `EXPORT.TXT`.
+- 5.3 Optional, the gold standard: those files in a real DOS Ultima V → Journey Onward shows the changed state; Quit & Save works. Without it, the RC notes say "PC bridge host-validated only".
+
+**6. Smoke and heap** (as Phase A3-RC1, condensed): walk / bump with music; Settings volumes and the two mutes; one fight to victory (hit cues, one kill burst, the fanfare); Mix with How much? 1; Alt+S / Alt+L; the System Menu ten times; New Journey and back to Continue; Developer → Diagnostics → Audio/render stats `und=0 hw=0 miss=0`. **Stop the capture.**
+
+**7. Power-cycle Continue**: the identity as in step 0; Continue loads; input works. Restore the card from step 0 if wanted.
+
+**8. Optional: the END1 revival** — only if a companion has fallen in play and stays dead into the Doom route (§7.15 B.2; the Developer has no kill shortcut, and Preset: Endgame's Max Party touches the roster, so take the route without it). Otherwise its automated evidence stands.
+
+**PASS** needs parts 1–7 with no crash, reset, watchdog, lock, stale-resource refusal or input-mode corruption; Save, Load and Continue restore the saved state; music and effects continuous; the heap capture explained (A3 §28.16 triggers; a placement-only trigger does not block). **Report:** the `FW` / `Git` lines, PASS / FAIL per step, the capture, photos of anything odd.
+
+### 9.19 Status
+
+| Axis | State |
+|---|---|
+| Investigation and plan | delivered before production code (the PARITY1 report); decisions §9.2 |
+| NEW-1 / D-78, P1b / D-79, P1c / D-80, NEW-2 / D-81, D-50 | **software fixed**, reference first, host-proven |
+| NEW-3 (IRAM guard) | **fixed**: `a3_04b_iram_check` GREEN on the image |
+| NEW-4 / D-82 | classified, **deferred** (§9.8) |
+| Ledger | A-19, A-20 added; A-7 revised; stale rows reconciled; D-82 queued |
+| Host | **181 / 181** serial; runtime 2 / 18 → 18 / 18; mutations **31 / 31**; corpora diffs exactly the predicted rows; reference vitest FAIL set identical |
+| Firmware | `0xfc410` (1,033,232 B), **15,344 B free**, SHA-256 `72fc1aee…d306`, `FW 4.0.0-alpha4-parity1-debug`; packs unchanged |
+| Hardware | **pending** — the consolidated RC session (§9.18) |
+| A4-UI4/PRES1 | unchanged: software complete, **hardware retest pending**; its hf1 image untouched |
+| Closed (commit, tag, push, flash) | **no** — nothing committed, tagged, pushed or flashed |

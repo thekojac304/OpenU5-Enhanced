@@ -8514,7 +8514,7 @@ A UI/presentation batch. The full write-up is [`ALPHA4_UI.md`](ALPHA4_UI.md) §2
 
 ### 3. Rows
 
-- Hardware checks: ALPHA4_UI.md §2.7 (steps 1–5), PENDING.
+- Hardware checks: ALPHA4_UI.md §2.7 (steps 1–5), PENDING. *(PASS, ALPHA4_UI.md §2.8; recorded here by A4-UI4.)*
 
 ## Alpha 4 A4-SAVE3 — original PC/DOS save import and export
 
@@ -8590,8 +8590,8 @@ The original ending restored on the device: ENDGAME.OVL's throne room, revivals,
 | 6 | A dissolve with no frame to capture (a failed frame, a fixture without pixels) waited for ever | **native defect found in the batch** | skipped and logged, like a capture without memory |
 | 7 | After a long wait at a getkey the next walk collapsed (the next wait timed from the getkey's start) | **native defect found in the batch** (runtime W4) | waits after an untimed wait start at the key |
 | 8 | Closing the System Menu let the scene catch up 250 ms | **native defect found in the batch** (runtime W5) | the clock stands under the System Menu / Developer screen and resumes exactly |
-| 9 | **H-214 / D-72** *(new)*: the native arena prints `VICTORY!` before the ending's text; the original goes from `absorb` straight to the overlay | **native divergence** (pinned by Batch 53A R3) | queued — a combat change, not the ending's |
-| 10 | **H-215 / D-73** *(new)*: the TypeScript reference's rescue narration (`rescue_events`) is not ENDMSG's text or order | **reference divergence** (pinned by quest_parity) | queued — fix the reference at the pinned layer; the device no longer uses it |
+| 9 | **H-214 / D-72** *(new)*: the native arena prints `VICTORY!` before the ending's text; the original goes from `absorb` straight to the overlay | **native divergence** (pinned by Batch 53A R3) | queued — a combat change, not the ending's. *(Fixed in A4-UI4/PRES1.)* |
+| 10 | **H-215 / D-73** *(new)*: the TypeScript reference's rescue narration (`rescue_events`) is not ENDMSG's text or order | **reference divergence** (pinned by quest_parity) | queued — fix the reference at the pinned layer; the device no longer uses it. *(Narration half fixed in A4-UI4/PRES1.)* |
 
 ### 2. Evidence
 
@@ -8607,3 +8607,94 @@ The original ending restored on the device: ENDGAME.OVL's throne room, revivals,
 - **The dead-companion revival was not physically exercised** on the T-Deck (no dead companion at hand): untested on hardware, not failed. Its evidence stays automated (core E7–E9; runtime W2, V4, M2, E1; mutants W2, M5, V4 killed).
 - A-15 revised; A-16 added (the ending's device adaptations). D-72 / H-214 and D-73 / H-215 remain queued, out of scope.
 - Optional DOS comparison (§7.16): not run. Closed with tag `alpha4-end1-hardware-validated`.
+
+## Alpha 4 A4-UI4/PRES1 — frontend and presentation finalization
+
+A frontend and presentation batch. The full write-up is [`ALPHA4_UI.md`](ALPHA4_UI.md) §8; this section records the classification on its own axis. No save format, gameplay rule, resource pack or audio pack changed. The only core outputs that moved are UI text (the console) and D-73's parity narration, changed in lock-step with the reference.
+
+### 1. Items and classification
+
+| # | Item | Class | Change |
+|---|---|---|---|
+| 1 | The main-menu footer omitted the S and P hotkeys | **native presentation** (prompt vs accepted keys) | footer names every hotkey |
+| 2 | The boot screens said "Alpha 2.0" / "HARDWARE-TRUTH" on Alpha 4 images | **native presentation** (stale labels) | the label follows `PROJECT_VER` |
+| 3 | Small text dropped each glyph's last column and bottom row | **native defect** (rasterization), found by the survey | the middle column / row pairs merged |
+| 4 | Two wordings for the same Settings footer, two names for the developer row | **native presentation** | one each |
+| 5 | H-15 / D-53: a world getdir showed `Aim: empty (-1,-1)` | **native presentation** (queued since Batch 52) | `Direction?` |
+| 6 | The underworld captioned "Britannia" (floor 255 vs `< 0`) | **native presentation defect** (= A4-SAVE3 item 7) | fixed |
+| 7 | D-12: the zodiac view clipped by the strips | **native presentation** | full square |
+| 8 | D-52: `^` rendered `?` | **native presentation** | the glyph |
+| 9 | D-72: `VICTORY!` before the ending | **native divergence** | the arena's "ended" line is never printed |
+| 10 | **H-216 / D-74** *(new)*: `BATTLE IS LOST!` ×3, `VICTORY!` ×2 | **native defect** (console text), found by the survey | same fix |
+| 11 | **D-75** *(new)*: echoes against DATA.OVL (getdir's word on its own row, `Cast`, `Ready`, `Z-stats`, `Klimb` twice, the arena's `Get`/`Open`/`Search`) | **native presentation divergence** | the DS strings; the rest of the echo family queued |
+| 12 | D-71: Mix's echo and 10-tick wait | **native presentation divergence** | fixed; the picker legend and spell list declared (A-17) |
+| 13 | D-67: the ritual's bursts (60/60 ms, silent) | **calibration + missing sound** | 174 ms each with its noise burst |
+| 14 | D-69: one drop for a whole shake on a still view | **native presentation** (frame model) | every pulse a frame |
+| 15 | D-68: the Refuge stage's content | **missing / extra presentation** | empty until the slumber beat; the Avatar alone at the end |
+| 16 | D-48: no transit animation, no rise or fall, no glow | **missing presentation** | 0x475a / 0x48a8 / EGA.DRV 0x24d6 reproduced |
+| 17 | D-73: the reference's rescue narration | **reference divergence** | the narration half fixed in the reference and the parity path |
+| 18 | D-5: Acknowledgements "one line" | **obsolete row** (the STARTSC.16 panel shows) | struck |
+| 19 | The in-game pickers' green `>`; the console's bullet, turn rows, cursor | **subjective adaptations** | mocked up; the user chose variant B and reverse video (2026-10-01): implemented, ALPHA4_UI.md §8.20 — **D-76** (the console package) and **D-77** (the lists), A-18 for their fit |
+| 20 | The arena's (C)ast printed `Cast...` twice (the key's echo plus `combat_cast()`'s own) | **native defect** (console text), found while building §8.20 | the key no longer echoes; D-75's note |
+
+### 2. Evidence
+
+- **RED-first** (`native/core/tools/a4_ui4_red_first.py`): presentation 3 / 29, moongate 3 / 11 against `e53741b2`'s production files; only the controls are GREEN (`native/core/a4-ui4-red-first.log`).
+- **GREEN:** 29 / 29, 11 / 11; suite 177 / 177 serial (`a4-ui4-ctest.log`).
+- **Mutations** (`native/core/tools/a4_ui4_mutation_check.py`): 33 / 33 killed (`a4-ui4-mutation.log`, `a4-ui4-mutation-m6.log`).
+- **Render census:** re-recorded for console text only; masked, every state equals UI1's (`a4-ui4-census-masked.log`).
+- **D-73:** `quest_parity` control RED with the reference alone; a token diff shows 18 absorption rows losing only message events (`a4-ui4-d73-quest-diff.log`); the reference's vitest FAIL set is unchanged (`a4-ui4-d73-vitest.log`).
+- **Firmware:** `0xfb410` (+2,448 B), 19,440 B free (ALPHA4_UI.md §8.17).
+
+### 3. Rows
+
+- D-12, D-48, D-52, D-53 (`Direction?`), D-67, D-68, D-69, D-71 (echo and wait), D-72, D-74, D-75 (the fixed echoes): software complete, **hardware pending** (ALPHA4_UI.md §8.18).
+- D-73: the narration half is fixed (no device change). D-5: obsolete. New deliberate rows: A-17 and E-7.
+- §8.20 (the user's decision): D-76 and D-77 software complete, **hardware pending**; new deliberate row A-18. Evidence: `a4_ui4_console_runtime` (18 checks; RED-first 1 / 18 against the pre-console tree and against `e53741b2`, the GREEN one the control C3, `a4-ui4-console-red-first.log`), the golden proof (`a4-ui4-console-golden-proof.log`), the mutation pass (`a4-ui4-mutation-console.log`).
+
+### 4. Hardware follow-up (2026-10-01)
+
+The full record is `ALPHA4_UI.md` §8.22. The first hardware run passed every step tested except two.
+
+| Finding | Classification | Outcome |
+|---|---|---|
+| Step 6, the caret (H-63 / D-52) | **checklist wording**: H-63's `^` is the Armaments scroll marker, not a readied-item mark | **hardware PASS**; the step rewritten; no code change |
+| Step 9, the shard ritual "did nothing" | **stale checklist precondition, not a defect.** The save had Astaroth destroyed (A4-END1's Preset: Endgame); CMDS 0x1076 refuses the summons with `No effect!` and CAST 0x16c1 stops after the Flame line. The south → Yell → north route is the binary's (0x1030 places the Shadowlord at y−2; 0x16ad reads y−1) | step 9 rewritten (revive Astaroth and set Hour 12 through the Developer rows); `batch25_shard_ritual` A1–A9 reproduce the hardware result and pass the corrected route through the menu; production unchanged |
+| The console used 12 of its rows | **native defect**: the device's UiSession page_rows (12) capped `visible_lines()` below the Board's 15–21-row layout, and Shift+Up paged by more rows than were shown | fixed: `kConsoleMaxRows` (21) and one shared `construct_session()`; `a4_ui4_console_runtime` H1–H5, RED-first 25 / 34 → 34 / 34, mutations 6 / 6; the A3-04F golden re-recorded, the masked census proving every change inside x 184–318, y 88–239 |
+
+- **Suite:** 178 / 178 serial.
+- **Image:** `4.0.0-alpha4-ui4-hf1-debug`, `0xfc150`, 16,048 B free, SHA-256 `1d57efce…3a44`. Packs unchanged.
+- **Retest pending:** the console height and the shard ritual (`ALPHA4_UI.md` §8.22.6). The batch stays open.
+
+## Alpha 4 A4-PARITY1 — release-readiness parity sweep
+
+An audit of everything still open before an Alpha 4 release candidate, then the fixes the user ruled blocking. The full write-up is [`ALPHA4_UI.md`](ALPHA4_UI.md) §9; this section records the classification on its own axis. It sits on the uncommitted A4-UI4/PRES1 + hf1 tree, whose hardware image (`4.0.0-alpha4-ui4-hf1-debug`, SHA-256 `1d57efce…3a44`) is untouched. No save format, slot rule, generation rule, resource pack or audio pack changed; the END1 ending, the PC bridge codec, the console package, audio pacing and the build configuration are untouched.
+
+### 1. Items and classification
+
+| # | Item | Class | Change |
+|---|---|---|---|
+| 1 | **D-78**: Blackthorn's palace absorbed every cast from a party that *carried* the crown but had not "used" it; the worn flag was saved nowhere, so a load absorbed again | **native and reference divergence; gameplay** (proven from the bytes: `[0x57b4]` read by CAST 0x0e45 / COMBAT 0x092f / ZSTATS 0x09e1, written only by SJOG 0x16e6) | both gates read possession (`quest.artifacts[1]` / `lbArtifacts.crown`), reference first |
+| 2 | **D-79**: (U)se crown toggled an invented flag; CAST 0x193e writes the time-spell byte 0x1c (permanent) through `set_time_spell` (CAST2 0x08f8, via the kernel thunk 0x80b2) | **native and reference divergence; state** | the crown is the third wearable on `[0x587a]` (with the amulet 0x0e and the badge 0x1d) |
+| 3 | **D-80**: Negate ('N') and the worn crown (0x1c) never stopped an enemy's magic projectile (COMBAT 0x0185), teleport (0x0f27) or special ability (COMSUBS 0x0112) | **native and reference divergence; gameplay (combat)**, found while proving item 2 (the byte's three readers) | the three gates, reference first; a new corpus `combat-negate.txt` |
+| 4 | **D-81** (with D-4): in a dungeon M opened Cast; N, B, E, F, P, T, X, Y answered "What?" | **native routing / presentation; gameplay keys** (`re/notes/dungeon-dispatch-gates.md` §3; the reference's dungeon handler) | M = Mix, N = New order; each refusal prints its DATA.OVL string with the binary's turn cost; Y reaches the core's own "No effect!" branch |
+| 5 | `a3_04b_iram_check` RED: `speaker_segment_frames` (called by `SpeakerVoice::begin_segment` on the audio task) left in flash once GCC stopped inlining it (by A4-END1) | **native placement regression** against the released Alpha 3 guard | one `noflash` entry in `audio_iram.lf`; `a3_04b_perf` I1b pins it |
+| 6 | **D-50**: the well's six words matched case-sensitively; kernel 0x6f1e folds case | **native and reference divergence; minor** (proven in Batch 52) | a byte-for-byte clone of 0x6f1e in both ports, its skip after a partial match included |
+| 7 | **D-82**: a new game lacks INIT.OOL's outdoor objects (an underworld skiff at (14,242), four dead bodies by the Amulet's cell) | **native and reference divergence; minor** | queued: the `.OOL` read site is not derived and the representation is open — not a small initialization omission |
+| 8 | **D-60** (the fanfare does not hold the game) | **decision** | the user's decision: deliberate row **A-19** |
+| 9 | **D-7** (dungeon keyboard movement is the Movement Mode contract) | **decision** | the user's decision: deliberate row **A-20** |
+| 10 | Ledger rows stale against their own records: D-17 ("still linked" — it is in the map's discarded sections), D-21, D-22, D-44 – D-47, D-49, D-55, D-53's `To phase:` half (all HW PASS or accepted in Batch 54); A-7's Mix clause; A-9 / A-10 / A-12's "ASCII-only" cause (IBM.CH and RUNES.CH are on the device since A4-UI1) | **documentation** | struck / corrected; no hardware status raised |
+| 11 | Deferred by the user: the credits curtain, the intro's story plates, the title's walking figures (post-Alpha 4); D-1, D-2 | **scope / decision** | unchanged |
+
+### 2. Evidence
+
+- **Binary:** `re/tools/dis16.py` over CAST.OVL 0x0e3e / 0x1764 / 0x1908 / 0x193e, CAST2.OVL 0x08f8, ULTIMA.EXE 0x80b2, COMBAT.OVL 0x0150–0x01a2 / 0x0f0c–0x0f5d / 0x092f, COMSUBS.OVL 0x0108–0x012c; a scan of every overlay and ULTIMA.EXE for instructions on `[0x57b3..0x57b5]` and `[0x587a]`; DATA.OVL's refusal strings by offset (ALPHA4_UI.md §9.3–§9.6).
+- **Reference first:** the TypeScript fix, then the corpora regenerated under `--check` controls (`native/core/a4-parity1-corpus-diff.log`): `magic.txt` and `combat.txt` byte-identical; `advanced-combat.txt` 2,794 rows changed, every one in a Negate scenario (variant 18 or spell 32, In An), 0 outside; the new `combat-negate.txt` changes only its Negate / crown rows against a corpus generated from the unfixed reference; the live `gameplay_parity` / `quest_parity` driver outputs change in 9 / 6 rows, each a wish, a Use crown or a Negate scroll in combat.
+- **RED-first:** `a4_parity1_runtime` 2 / 18 on the pre-PARITY1 production (the two GREEN are its controls) → 18 / 18; `magic_parity`, `advanced_combat_parity`, `combat_negate_parity` RED on the unfixed native, GREEN after; `a3_04b_perf` I1b RED → GREEN; the reference's new vitest cases 6 RED on HEAD's reference (`a4-parity1-ts-red-first.log`).
+- **Mutations, suite, firmware:** ALPHA4_UI.md §9.14–§9.16.
+
+### 3. Rows
+
+- D-50, D-78, D-79, D-80, D-81: software fixed, **hardware pending** (the consolidated RC checklist, ALPHA4_UI.md §9.18).
+- D-4 answered and closed by D-81; D-60 → A-19; D-7 → A-20; A-7 revised.
+- D-82 new and queued. The UI4/PRES1 rows keep their own status (software fixed, hardware retest pending).
