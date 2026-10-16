@@ -1,6 +1,6 @@
 # T-Deck Native View — Phase 3: functional UI parity (prototype)
 
-Status: implemented on a feature branch (development prototype image only). Native View now keeps
+Status: implemented on a feature branch (`d09e0f41`; development package recorded in §9). Native View now keeps
 ordinary play — shops, lists, the member picker, prompts — on the DOS screen; the production image is
 unchanged. Nothing is merged, pushed or published. **No physical T-Deck testing has been done for this
 phase** (§10). Phase 4 (mode switching) has not begun.
@@ -271,8 +271,27 @@ the final tests killed **15/15** (`phase3-mutations-final.log`).
 
 ## 9. Development package
 
-Built after the implementation commit from the clean tree and recorded in the commit that follows
-it (as Phase 2 did): see the table below once filled.
+Built fresh from the clean implementation commit `d09e0f414df4d70f6a4400d10025addcfe47d617` (`d09e0f41`; the image embeds
+`d09e0f414df4`, no `-dirty`), then packaged by `native/targets/tdeck/package_launcher.py`.
+
+| Item | Value |
+| --- | --- |
+| File | `OpenU5-TDeck-Alpha0.5.0-nativeview-p3-Debug-Launcher.bin` |
+| Location | `C:\Dev\U5Native\builds\u5-tdeck-native-p3\package-d09e0f41\` (with `SHA256SUMS.txt` and the `sdkconfig` used); built in `phase3-a1\tdeck-postcommit-prototype` |
+| SHA-256 | `19d5984479950be495e501e538ca6741b543a742c2b6260da698ec00bb6e82d1` |
+| Size | 1,104,128 bytes (Launcher allocation 1,114,112; 9,985 bytes to the next 64 KiB step; 206,592 bytes of the app partition free) |
+| Version / FW line | `0.5.0-nativeview-p3-debug` (a development build, not a release) |
+| Configuration | ESP-IDF 6.1, Xtensa GCC 15.2.0, v0.5.0 `sdkconfig`, `--no-ccache`, `-D OPENU5_NATIVE_VIEW_PROTOTYPE=ON`, developer tools ON (as production) |
+| Activation | flash with Launcher; Native by default; `enhanced` as the first word of `/sd/ultima5/dev/presentation.txt` selects Enhanced (reboot to change); the serial line `NATIVE_VIEW_PROTOTYPE presentation=… dos_text=loaded` confirms both |
+
+The post-commit images: production `0.5.0-rc2` **1,075,520** bytes, every section and stack frame
+identical to Phase 2's (audit PASS, 101 TUs); prototype **1,104,128** bytes (`.flash.text` 764,874,
+`.flash.rodata` 239,644, `.iram0.text` 76,039, `.dram0.data` 22,123, `.dram0.bss` 54,208; audit PASS,
+104 TUs) — 48 bytes over the `a2` validation image (§7) for the two fixes made after it (the bounded
+strip format and the in-place block clear; `dos_text_extract`'s frame is now 48 B). The Windows
+build of the same commit passes **40/40** with no warnings (`windows-postcommit-*.log`). Nothing
+under `C:\Dev\U5Native\releases` was written; `v0.5.0` (`355d4a1e…`), `main` and `origin/main`
+(`db562274…`) are unchanged.
 
 ## 10. Hardware acceptance checklist (all **PENDING**)
 
