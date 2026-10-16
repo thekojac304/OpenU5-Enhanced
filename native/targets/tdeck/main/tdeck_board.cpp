@@ -926,17 +926,19 @@ esp_err_t Board::show_alpha(const uint16_t *pixels,const openu5::UiSession &ui,
     // and the T-Deck Native View prototype; the Developer screen stays the
     // handheld's. Its map is never clipped by a strip and it has no text sizes.
     // The 1988 interaction model composes no shop panel or prompt bar; the
-    // handheld one's prompt bar goes to the strip under the picture, and its
-    // shop panel, which has no DOS form yet (TDECK_NATIVE_VIEW_PHASE2.md),
-    // is shown on the handheld screen until the shop closes.
-    const bool handheld_shop=shop&&shop->active;
+    // handheld one's prompt bar goes to the strip under the picture. Its shop
+    // panel has a DOS form in the runtime's Native frame (Phase 3,
+    // TDECK_NATIVE_VIEW_PHASE3.md); a shop without one -- no frame composed for
+    // this presentation -- is shown on the handheld screen until it closes.
+    const DeviceNativeFrame *native=native_frame_;native_frame_=nullptr; // one frame's
+    const bool handheld_shop=shop&&shop->active&&!native;
     if(dos_layout_&&!debug&&!handheld_shop)
         return show_alpha_dos(pixels,ui,game,hud,runes_font,animated_cells,animation_only,selection,context_bar,
-                              party_highlight,viewport_crc,dungeon_bands,preserve_party_panel);
+                              party_highlight,viewport_crc,dungeon_bands,preserve_party_panel,native);
     if(dos_layout_&&handheld_shop&&dos_screen_drawn_){
         // Leaving the DOS frame: the handheld screen repaints whole, and the
         // DOS frame does again when the shop closes.
-        alpha_drawn_=false;dos_screen_drawn_=false;
+        alpha_drawn_=false;dos_screen_drawn_=false;++handheld_fallbacks_;
     }
 #endif
     (void)turn;(void)overlay;

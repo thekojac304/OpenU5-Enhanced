@@ -2,9 +2,20 @@ include("${CMAKE_CURRENT_LIST_DIR}/../../../core/sources.cmake")
 # T-Deck Native View Phase 2: the prototype image adds the shared DOS screen
 # painter (board_dos_layout.cpp, the same file Windows Original uses) and the
 # boot-time presentation choice (native_view_prototype.cpp).
+# Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the DOS names -- the DATA.OVL
+# tables read from the pack (dos_text_tables.cpp) and the two equipment tables
+# generated from the repository's web-port copies, as Windows generates them.
 set(OPENU5_NATIVE_VIEW_SOURCES)
+set(OPENU5_NATIVE_VIEW_INCLUDES)
 if(OPENU5_NATIVE_VIEW_PROTOTYPE)
-    set(OPENU5_NATIVE_VIEW_SOURCES "board_dos_layout.cpp" "native_view_prototype.cpp")
+    set(OPENU5_NATIVE_VIEW_SOURCES "board_dos_layout.cpp" "native_view_prototype.cpp"
+        "${CMAKE_CURRENT_LIST_DIR}/../../../core/src/dos_text_tables.cpp")
+    include("${CMAKE_CURRENT_LIST_DIR}/../../windows/cmake/DosTables.cmake")
+    set(OPENU5_NATIVE_VIEW_INCLUDES "${CMAKE_CURRENT_BINARY_DIR}/generated")
+    file(MAKE_DIRECTORY "${OPENU5_NATIVE_VIEW_INCLUDES}")
+    uv_generate_dos_tables("${CMAKE_CURRENT_LIST_DIR}/../../../../game/src/core/data/shortEquipNames.json"
+                           "${CMAKE_CURRENT_LIST_DIR}/../../../../game/src/core/readyPicker.ts"
+                           "${OPENU5_NATIVE_VIEW_INCLUDES}")
 endif()
 idf_component_register(
     SRCS "main.cpp" "sd_diagnostic_logger.cpp" "tdeck_board.cpp" "tdeck_input.cpp" "input_controller.cpp"
@@ -16,6 +27,7 @@ idf_component_register(
          ${OPENU5_NATIVE_VIEW_SOURCES}
          ${OPENU5_CORE_SOURCES}
     INCLUDE_DIRS "." "../../../core/include"
+    PRIV_INCLUDE_DIRS ${OPENU5_NATIVE_VIEW_INCLUDES}
     # A3-04B (ALPHA3_AUDIO.md section 19.8): the audio task's per-sample path in IRAM.
     LDFRAGMENTS "audio_iram.lf"
     PRIV_REQUIRES esp_system esp_app_format esp_hw_support esp_psram heap spi_flash freertos esp_timer

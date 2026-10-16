@@ -173,8 +173,12 @@ extern "C" void app_main(void) {
                 const auto presentation=tdeck::read_prototype_presentation();
                 tdeck::install_prototype_presentation(presentation);
                 board.set_dos_layout(presentation==tdeck::PrototypePresentation::Native);
-                ESP_LOGW(kTag,"NATIVE_VIEW_PROTOTYPE presentation=%s marker=%s (development image, not a release)",
-                         tdeck::prototype_presentation_name(presentation),tdeck::kPrototypePresentationPath);
+                // Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the DOS names, from the
+                // pack while it is open, whichever presentation boots.
+                const bool dos_text=tdeck::load_prototype_dos_text(alpha_pack);
+                ESP_LOGW(kTag,"NATIVE_VIEW_PROTOTYPE presentation=%s marker=%s dos_text=%s (development image, not a release)",
+                         tdeck::prototype_presentation_name(presentation),tdeck::kPrototypePresentationPath,
+                         dos_text?"loaded":"none");
             }
 #endif
             {

@@ -8,7 +8,11 @@ Three configurations (docs/TDECK_NATIVE_VIEW_PHASE2.md):
                                         OPENU5_FIXED_HANDHELD_INTERACTION and
                                         OPENU5_DOS_SCREEN_LAYOUT on every shared TU, never
                                         the whole-profile fix, board_dos_layout.cpp built,
-                                        -Werror and -fstack-usage
+                                        -Werror and -fstack-usage; Phase 3
+                                        (docs/TDECK_NATIVE_VIEW_PHASE3.md): the boot
+                                        selector and the DOS-name extractor
+                                        (native_view_prototype.cpp, dos_text_tables.cpp)
+                                        built too, and neither in the production image
   desktop (neither flag)                no handheld fixing of any group
 """
 import argparse
@@ -31,7 +35,11 @@ def verify(commands, handheld, prototype=False):
     if len(selected) < 70:
         raise ValueError(f'Incomplete shared source command list: {len(selected)}')
     firmware = handheld or prototype
-    dos_painter = any(entry['file'].replace('\\', '/').lower().endswith('/board_dos_layout.cpp') for entry in selected)
+    def builds(name):
+        return any(entry['file'].replace('\\', '/').lower().endswith('/' + name) for entry in selected)
+    dos_painter = builds('board_dos_layout.cpp')
+    native_names = builds('native_view_prototype.cpp') and builds('dos_text_tables.cpp')
+    native_any = builds('native_view_prototype.cpp') or builds('dos_text_tables.cpp')
     for entry in selected:
         command = entry.get('command', ' '.join(entry.get('arguments', [])))
         fixed = defined(command, 'OPENU5_FIXED_HANDHELD_PROFILE')
@@ -57,6 +65,10 @@ def verify(commands, handheld, prototype=False):
         raise ValueError('Prototype does not build board_dos_layout.cpp')
     if handheld and dos_painter:
         raise ValueError('Production firmware builds board_dos_layout.cpp')
+    if prototype and not native_names:
+        raise ValueError('Prototype does not build the selector and the DOS-name extractor')
+    if handheld and native_any:
+        raise ValueError('Production firmware builds Native View prototype sources')
     return len(selected)
 
 

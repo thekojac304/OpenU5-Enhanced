@@ -12,6 +12,10 @@
 // legend, which the handheld never prints on the console -- is shown there
 // while it is active (draw_dos_context_strip), and the strip is black again
 // when it closes. Windows Original composes no context bar: its strip stays black.
+// Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the runtime's Native frame
+// (DeviceNativeFrame) gives the panel's DOS form of every handheld list and
+// shop, and the strip's three rows -- the question, a detail line for the
+// highlighted entry, the keys -- and the Movement (WASD) Mode word.
 //
 // The geometry is ULTIMA.EXE's frame, 0x63ac..0x64f7 (the web port's
 // fiel/frame.ts FRAME_FILLS / FRAME_GLYPHS / FRAME_SEGMENTS), checked pixel by
@@ -82,12 +86,15 @@ constexpr char kConsoleBullet = '\x10';
 constexpr uint8_t kCornerTopLeft[8] = {0x07, 0x1f, 0x3f, 0x7f, 0x7f, 0xff, 0xff, 0xff};
 constexpr uint8_t kCornerTopRight[8] = {0xe0, 0xf8, 0xfc, 0xfe, 0xfe, 0xff, 0xff, 0xff};
 constexpr uint8_t kCornerBottomLeft[8] = {0xff, 0xff, 0xff, 0x7f, 0x7f, 0x3f, 0x1f, 0x07};
-// The handheld prompt strip under the picture (rows 200..239): a rule, the
-// context bar's status (the question) and its actions (the key legend), in
-// the handheld's text cells, as tdeck_board.cpp's context bar draws them.
+// The handheld prompt strip under the picture (rows 200..239): a rule, then
+// three rows of the handheld's text cells (6 px, as tdeck_board.cpp's context
+// bar draws them) -- the question (cyan), the detail (white), the keys (green)
+// -- and "MOVE" (green) at the right end of the keys' row.
 constexpr int kStripY = kScreenHeight, kStripH = kDisplayHeight - kScreenHeight;
-constexpr int kStripRuleY = kStripY + 3, kStripStatusY = kStripY + 8, kStripActionsY = kStripY + 24;
+constexpr int kStripRuleY = kStripY + 3, kStripQuestionY = kStripY + 6, kStripDetailY = kStripY + 17,
+              kStripKeysY = kStripY + 28;
 constexpr int kStripTextX = 4, kStripTextW = kDisplayWidth - 8, kStripTextH = 9;
+constexpr int kStripMoveW = 4 * 6, kStripMoveX = kStripTextX + kStripTextW - kStripMoveW;
 // The roster row (roster.ts / kernel 0x27ab): name in 9, the arrow, HP in 4, the status letter.
 constexpr uint8_t kRosterArrow = 0x1a;
 
@@ -366,31 +373,46 @@ esp_err_t Board::draw_dos_console(const openu5::UiSession &ui, bool force) {
     return ESP_OK;
 }
 
-esp_err_t Board::draw_dos_context_strip(const DeviceContextActionBar *bar, bool force) {
+esp_err_t Board::draw_dos_context_strip(const DeviceNativeStrip *strip, bool force) {
     auto &cache = *dos_cache_;
-    const bool active = bar && bar->active;
-    if (!active) {
+    const DeviceNativeStrip none{};
+    const DeviceNativeStrip &now = strip ? *strip : none;
+    if (!now.active && !now.move) {
         // Closed: black again (draw_dos_frame paints it black on a full frame).
         if (!cache.strip_shown) return ESP_OK;
         ESP_RETURN_ON_ERROR(fill_rect(0, kStripY, kDisplayWidth, kStripH, kBlack), kTag, "clear the prompt strip");
         ++debug_last_dirty_regions_;
         debug_last_pixels_ += size_t(kDisplayWidth) * kStripH;
+        cache.strip = DeviceNativeStrip{};
         cache.strip_shown = false;
         return ESP_OK;
     }
-    const bool first = force || !cache.strip_shown;
+    // A prompt opening or closing (the rule comes and goes) repaints the strip whole.
+    const bool first = force || !cache.strip_shown || cache.strip.active != now.active;
+    if (!first && cache.strip == now) return ESP_OK;
     if (first) {
         ESP_RETURN_ON_ERROR(fill_rect(0, kStripY, kDisplayWidth, kStripH, kBlack), kTag, "open the prompt strip");
-        ESP_RETURN_ON_ERROR(fill_rect(kStripTextX, kStripRuleY, kStripTextW, 1, kWhite), kTag, "prompt strip rule");
+        if (now.active)
+            ESP_RETURN_ON_ERROR(fill_rect(kStripTextX, kStripRuleY, kStripTextW, 1, kWhite), kTag, "prompt strip rule");
     }
-    if (first || std::strcmp(cache.strip.status, bar->status) != 0)
-        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripStatusY, kStripTextW, kStripTextH, bar->status, kCyan), kTag,
-                            "prompt strip status");
-    if (first || std::strcmp(cache.strip.actions, bar->actions) != 0)
-        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripActionsY, kStripTextW, kStripTextH, bar->actions, kGreen), kTag,
-                            "prompt strip actions");
+    if (now.active && (first || std::strcmp(now.question, cache.strip.question) != 0))
+        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripQuestionY, kStripTextW, kStripTextH, now.question, kCyan),
+                            kTag, "prompt strip question");
+    if (now.active && (first || std::strcmp(now.detail, cache.strip.detail) != 0))
+        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripDetailY, kStripTextW, kStripTextH, now.detail, kWhite),
+                            kTag, "prompt strip detail");
+    // The keys stop short of MOVE's four cells while it shows.
+    if (first || cache.strip.move != now.move || std::strcmp(now.keys, cache.strip.keys) != 0) {
+        const int keys_w = now.move ? kStripMoveX - kStripTextX - 6 : kStripTextW;
+        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripKeysY, keys_w, kStripTextH, now.active ? now.keys : "",
+                                          kGreen),
+                            kTag, "prompt strip keys");
+        if (now.move)
+            ESP_RETURN_ON_ERROR(draw_text_box(kStripMoveX - 6, kStripKeysY, kStripMoveW + 6, kStripTextH, " MOVE", kGreen),
+                                kTag, "movement mode");
+    }
     ++debug_last_dirty_regions_;
-    cache.strip = *bar;
+    cache.strip = now;
     cache.strip_shown = true;
     return ESP_OK;
 }
@@ -400,7 +422,7 @@ esp_err_t Board::show_alpha_dos(const uint16_t *pixels, const openu5::UiSession 
                                 bool animation_only, const DeviceSelectionView *selection,
                                 const DeviceContextActionBar *context_bar, DevicePartyHighlight party_highlight,
                                 uint32_t viewport_crc, const openu5::HudDungeonBands *dungeon_bands,
-                                bool preserve_party_panel) {
+                                bool preserve_party_panel, const DeviceNativeFrame *native) {
     debug_last_full_redraw_ = false;
     debug_last_dirty_regions_ = 0;
     debug_last_pixels_ = 0;
@@ -495,27 +517,40 @@ esp_err_t Board::show_alpha_dos(const uint16_t *pixels, const openu5::UiSession 
         std::snprintf(cache.bottom_band, sizeof(cache.bottom_band), "%s", bottom);
         cache.bottom_valid = true;
     }
-    // The right panel: a list's own (the 1988 interaction model), else the
-    // frame's roster and status boxes. A list the runtime has no DOS form for
-    // is shown in the list frame all the same, under its title.
+    // The right panel: the Native frame's (Phase 3: every handheld list and
+    // shop has its DOS form there; none is the roster and status boxes, the
+    // member picker's included), else a list's own (the 1988 interaction
+    // model), else the frame's roster and status boxes. Without a Native
+    // frame, a list the runtime has no DOS form for is shown in the list frame
+    // all the same, under its title, around the highlighted row.
     DeviceDosPanel world{};
     const DeviceDosPanel *panel = nullptr;
-    if (selection && selection->active && selection->dos) {
+    if (native) {
+        if (native->panel) panel = native->panel;
+        else if (!(preserve_party_panel && cache.panel_valid)) {
+            compose_dos_world_panel(world, game, party_highlight);
+            panel = &world;
+        }
+    } else if (selection && selection->active && selection->dos) {
         panel = selection->dos;
     } else if (selection && selection->active) {
         dos_panel_clear(world);
         std::snprintf(world.banner, sizeof(world.banner), "%.15s", selection->title);
         constexpr size_t kRows = kDosPanelRows - 2;
         dos_panel_list_frame(world, kRows);
-        for (size_t i = 0; i < selection->row_count && i < kRows; ++i) {
+        // The selector's page has 8 rows, the frame 7: keep the highlighted one in view.
+        const size_t first = selection->selected_row < selection->row_count && selection->selected_row >= kRows
+                                 ? selection->selected_row - (kRows - 1)
+                                 : 0;
+        for (size_t i = first; i < selection->row_count && i < first + kRows; ++i) {
             const char *text = selection->rows[i];
             while (*text == ' ') ++text;
             char cell_text[14]{};
             std::snprintf(cell_text, sizeof(cell_text), "%.13s", text);
-            dos_panel_put(world, i + 1, 1, cell_text);
-            if (i == selection->selected_row) world.inverse[i + 1] = 0x3ffe;
+            dos_panel_put(world, i - first + 1, 1, cell_text);
+            if (i == selection->selected_row) world.inverse[i - first + 1] = 0x3ffe;
         }
-        world.arrow = dos_panel_arrow(selection->page_start, kRows, selection->total);
+        world.arrow = dos_panel_arrow(selection->page_start + first, kRows, selection->total);
         panel = &world;
     } else if (!(preserve_party_panel && cache.panel_valid)) {
         compose_dos_world_panel(world, game, party_highlight);
@@ -527,13 +562,21 @@ esp_err_t Board::show_alpha_dos(const uint16_t *pixels, const openu5::UiSession 
         cache.panel_valid = true;
     }
     ESP_RETURN_ON_ERROR(draw_dos_console(ui, full), kTag, "draw the console");
-    // The handheld interaction's prompt and key legend: the context bar, or a
-    // list's own (the handheld draws that one inside its selector panel).
-    const DeviceContextActionBar *strip = context_bar && context_bar->active ? context_bar
-                                          : selection && selection->active && selection->context.active
-                                              ? &selection->context
-                                              : nullptr;
-    return draw_dos_context_strip(strip, full);
+    // The handheld interaction's strip: the Native frame's, else the prompt
+    // and key legend of the context bar or of a list (the handheld draws that
+    // one inside its selector panel).
+    if (native) return draw_dos_context_strip(&native->strip, full);
+    const DeviceContextActionBar *bar = context_bar && context_bar->active ? context_bar
+                                        : selection && selection->active && selection->context.active
+                                            ? &selection->context
+                                            : nullptr;
+    DeviceNativeStrip strip{};
+    if (bar) {
+        strip.active = true;
+        std::snprintf(strip.question, sizeof(strip.question), "%s", bar->status);
+        std::snprintf(strip.keys, sizeof(strip.keys), "%s", bar->actions);
+    }
+    return draw_dos_context_strip(&strip, full);
 }
 
 esp_err_t Board::dos_camp_viewport(const uint16_t *pixels) {

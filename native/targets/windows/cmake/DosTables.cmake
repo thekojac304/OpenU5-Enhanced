@@ -4,7 +4,8 @@
 # repository already tracks for the web port (game/src/core/data/shortEquipNames.json
 # and READY_GLYPH_TABLE in game/src/core/readyPicker.ts). As with loot_names.inc,
 # the generated file lives in the build tree only; Windows Original mode reads
-# it through the platform profile (app/dos_text.cpp), the T-Deck never does.
+# it through the platform profile (app/dos_text.cpp), and so does the T-Deck
+# Native View prototype (native_view_prototype.cpp); the production firmware never does.
 function(uv_generate_dos_tables names_json glyph_ts out_dir)
   file(READ "${names_json}" json)
   string(JSON count LENGTH "${json}" names)

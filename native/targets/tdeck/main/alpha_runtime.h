@@ -303,6 +303,15 @@ class AlphaRuntime {
     DeviceShopView shop_view_for_test() { const auto *v = compose_shop_view(); return v ? *v : DeviceShopView{}; }
     DeviceContextActionBar context_bar_for_test() { const auto *b = compose_context_bar(); return b ? *b : DeviceContextActionBar{}; }
     DevicePartyHighlight party_highlight_for_test() const { return compose_party_highlight(); }
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
+    // T-Deck Native View Phase 3: the Native frame the next render hands the
+    // Board (null when the presentation is not Native). Composed from the
+    // three views above, so a test reads exactly what the screen will show.
+    const DeviceNativeFrame *native_frame_for_test() {
+        return compose_native_frame(compose_shop_view(), compose_selection_view(), compose_context_bar(),
+                                    input_.movement_mode_active(ui_->mode(), ui_->accepts_direction_input()));
+    }
+#endif
     // A3-HF4 host-test seam: the device-owned interaction and presentation
     // state a load must not carry into the loaded game. Read-only.
     struct TransientProbe {
@@ -728,6 +737,31 @@ class AlphaRuntime {
     const DeviceSelectionView *compose_selection_view();
     DevicePartyHighlight compose_party_highlight() const;
     const DeviceContextActionBar *compose_context_bar();
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
+    // T-Deck Native View Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the DOS
+    // screen's form of the handheld lists, shops and prompts -- the DOS
+    // presentation with the HANDHELD interaction (platform_dos_panels() and not
+    // platform_dos_interface()); null otherwise (Windows Original, Enhanced).
+    // It reads the three views the handheld screen gets and the same runtime
+    // state; it decides no key, list, cursor or command. A heap object made on
+    // the first Native frame (the Enhanced screen and Windows never make one).
+    struct NativeFrameState {
+        DeviceNativeFrame frame{};
+        DeviceDosPanel panel{};
+        size_t scroll = 0; // the panel list's first visible row (minimal scroll)
+        int key = -1;      // which list `scroll` was kept for
+    };
+    std::unique_ptr<NativeFrameState> native_;
+    const DeviceNativeFrame *compose_native_frame(const DeviceShopView *shop, const DeviceSelectionView *selection,
+                                                  const DeviceContextActionBar *bar, bool movement_mode);
+    void compose_native_shop(NativeFrameState &state, const DeviceShopView &shop);
+    void compose_native_list(NativeFrameState &state, const DeviceSelectionView &selection);
+#endif
+#if defined(OPENU5_NATIVE_VIEW_PROTOTYPE)
+    // Whether the last gameplay frame was drawn for the DOS screen: a change
+    // (the presentation switched under a running game) is a whole repaint.
+    bool presented_dos_screen_ = false;
+#endif
     void modal(const openu5::UiIntent &);
     // Pushes the two narrow world facts UiSession's exploration key routing
     // needs (sails context, harpsichord context) from authoritative runtime

@@ -256,6 +256,35 @@ inline void dos_list_row(DeviceDosPanel &panel,size_t row,size_t col,size_t widt
     else put_text(n,false);
 }
 
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
+// T-Deck Native View Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): what the DOS
+// screen shows with the HANDHELD interaction (platform_dos_panels() without
+// platform_dos_interface(): the T-Deck prototype; never Windows Original). The
+// runtime composes it every frame from the same lists, shops and prompts the
+// handheld screen shows -- nothing here decides a key, a list or a command.
+//  - panel: the right panel's 1988 form (a DeviceDosPanel), or null for the
+//    roster and status boxes -- which, with the party highlight's cursor and
+//    "Select:", are also the member picker.
+//  - strip: rows 200..239 under the picture, black unless something is shown:
+//    a rule and up to three rows -- the question (cyan), a detail line for
+//    the highlighted entry the DOS panel cannot hold (white), the keys
+//    (green) -- and the Movement (WASD) Mode word "MOVE" at the right of the
+//    keys' row, which may show alone.
+constexpr size_t kNativeStripColumns=52; // (320 - 8) / 6 px cells
+struct DeviceNativeStrip {
+    bool active=false,move=false;
+    char question[kNativeStripColumns+1]{},detail[kNativeStripColumns+1]{},keys[kNativeStripColumns+1]{};
+};
+struct DeviceNativeFrame {
+    const DeviceDosPanel *panel=nullptr;
+    DeviceNativeStrip strip{};
+};
+inline bool operator==(const DeviceNativeStrip &a,const DeviceNativeStrip &b){
+    return a.active==b.active&&a.move==b.move&&std::strcmp(a.question,b.question)==0&&
+           std::strcmp(a.detail,b.detail)==0&&std::strcmp(a.keys,b.keys)==0;
+}
+#endif
+
 constexpr size_t kSelectionVisibleRows=8;
 struct DeviceSelectionView {
     bool active=false,detail_panel=false;

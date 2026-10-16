@@ -15,8 +15,11 @@
 //      map, never the frame
 //   S  the handheld prompt strip: a prompt's question and keys under the
 //      picture while it is open, black again when it closes
-//   T  transitions: handheld -> Native, the System Menu and back, a shop on
-//      the handheld screen and back, Native -> Enhanced -- each a whole repaint
+//   T  transitions: handheld -> Native, the System Menu and back, Native ->
+//      Enhanced -- each a whole repaint; a shop stays on the Native screen
+//      (Phase 3 replaced Phase 2's handheld-screen fallback,
+//      docs/TDECK_NATIVE_VIEW_PHASE3.md; tdeck_native_view_phase3_runtime
+//      covers the shops themselves)
 //   B  bounds: no window outside the panel, no malformed pixel data
 //   I  input and gameplay: the same raw script (trackball, its click / WASD,
 //      command keys, Confirm / Mic, Mic hold, Symbol+Mic, the member and spell
@@ -127,7 +130,7 @@ void test_policy() {
     install_prototype_presentation(PrototypePresentation::Native);
     check(platform_dos_screen() && platform_dos_panels() && !platform_dos_interface() && !platform_typed_spell_names() &&
               !platform_quit_save_key() && platform_enhanced_rows() && !platform_dos_text(DosText::Literal, 0),
-          "P1 Native: the DOS screen and panels; the handheld interaction; Difficulty/Cheats kept; no DOS tables");
+          "P1 Native: the DOS screen and panels; the handheld interaction; Difficulty/Cheats kept; no DOS string at Literal 0");
     check(platform_profile().dos_interface == nullptr && platform_profile().typed_spell_names == nullptr &&
               platform_profile().quit_save_key == nullptr && platform_profile().enhanced_rows == nullptr &&
               std::strcmp(platform_profile().back_key, "Mic") == 0,
@@ -213,7 +216,7 @@ void test_screen() {
     h.run(200);
     check(menu && full_window_written() && frame_drawn() && rows_black(200, 239),
           "T2 Alt+M draws the handheld System Menu; Mic returns to a whole repaint of the Native frame");
-    // T3: a shop has no DOS form yet: the handheld screen, and back.
+    // T3: a shop stays on the Native screen (Phase 3), and closes back to the roster.
     h.rt->game().gold = 9999;
     const bool shop_open = teleport_town(h, 2, 15, 30) && h.rt->open_shop_for_test(0);
     h.run(100);
@@ -222,15 +225,17 @@ void test_screen() {
     h.key('b');
     h.run(100);
     const auto shop = h.rt->shop_view_for_test();
-    const bool handheld_shop = shop.active && shop.row_count > 0 && white_run(2, 182, 318) && !frame_drawn();
-    check(shop_open && handheld_shop, "T3a a shop's Buy list is the handheld shop panel (rule at y 2), not the DOS frame");
+    const bool native_shop = shop.active && shop.row_count > 0 && !white_run(2, 182, 318) && frame_drawn() &&
+                             h.board.handheld_fallbacks() == 0;
+    check(shop_open && native_shop, "T3a a shop's Buy list stays on the Native screen: the DOS frame, no handheld shop panel");
     bus::reset_stats();
     for (int i = 0; i < 4 && h.rt->ui()->mode() == UiMode::Shop; ++i) {
         h.mic();
         h.run(100);
     }
-    check(h.rt->ui()->mode() != UiMode::Shop && full_window_written() && frame_drawn() && rows_black(200, 239),
-          "T3b leaving the shop repaints the Native frame whole; rows 200..239 black");
+    check(h.rt->ui()->mode() != UiMode::Shop && !full_window_written() && frame_drawn() && rows_black(200, 239) &&
+              h.board.handheld_fallbacks() == 0,
+          "T3b leaving the shop redraws the panel and strip only (the frame never left); rows 200..239 black");
     // T4: Native -> Enhanced (the selector's other choice).
     bus::reset_stats();
     boot(h, PrototypePresentation::Enhanced);

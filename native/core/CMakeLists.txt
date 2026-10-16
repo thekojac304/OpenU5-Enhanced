@@ -2707,9 +2707,40 @@ if(BUILD_TESTING)
   openu5_a4_ui2_runtime(tdeck_native_view_runtime
     "../targets/tdeck/host_tests/tdeck_native_view_runtime_test.cpp" openu5_native_handheld_core)
   target_sources(tdeck_native_view_runtime PRIVATE
-    ../targets/tdeck/main/board_dos_layout.cpp ../targets/tdeck/main/native_view_prototype.cpp)
+    ../targets/tdeck/main/board_dos_layout.cpp ../targets/tdeck/main/native_view_prototype.cpp
+    src/dos_text_tables.cpp)
+  # Phase 3: the prototype's DOS equipment tables, generated as the firmware generates them.
+  include("${CMAKE_CURRENT_SOURCE_DIR}/../targets/windows/cmake/DosTables.cmake")
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/native-view-generated")
+  uv_generate_dos_tables("${CMAKE_CURRENT_SOURCE_DIR}/../../game/src/core/data/shortEquipNames.json"
+                         "${CMAKE_CURRENT_SOURCE_DIR}/../../game/src/core/readyPicker.ts"
+                         "${CMAKE_CURRENT_BINARY_DIR}/native-view-generated")
+  target_include_directories(tdeck_native_view_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/native-view-generated")
   target_compile_definitions(tdeck_native_view_runtime PRIVATE OPENU5_DOS_SCREEN_LAYOUT=1 OPENU5_NATIVE_VIEW_PROTOTYPE=1)
   add_test(NAME tdeck_native_view_runtime COMMAND tdeck_native_view_runtime
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
+  # T-Deck Native View Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the same configuration,
+  # with the DOS names from the pack: Native shops, lists, the roster picker, the strip and
+  # MOVE, presentation switches of a running game, and Enhanced/Native traces through shops.
+  openu5_a4_ui2_runtime(tdeck_native_view_phase3_runtime
+    "../targets/tdeck/host_tests/tdeck_native_view_phase3_runtime_test.cpp" openu5_native_handheld_core)
+  target_sources(tdeck_native_view_phase3_runtime PRIVATE
+    ../targets/tdeck/main/board_dos_layout.cpp ../targets/tdeck/main/native_view_prototype.cpp
+    src/dos_text_tables.cpp)
+  target_include_directories(tdeck_native_view_phase3_runtime PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/native-view-generated")
+  target_compile_definitions(tdeck_native_view_phase3_runtime PRIVATE OPENU5_DOS_SCREEN_LAYOUT=1 OPENU5_NATIVE_VIEW_PROTOTYPE=1)
+  add_test(NAME tdeck_native_view_phase3_runtime COMMAND tdeck_native_view_phase3_runtime
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
+  # The same source with the dynamic core (as Windows builds it): the Windows Original and
+  # Enhanced profiles never get a Native frame.
+  openu5_a4_ui2_runtime(tdeck_native_view_phase3_desktop
+    "../targets/tdeck/host_tests/tdeck_native_view_phase3_runtime_test.cpp")
+  target_sources(tdeck_native_view_phase3_desktop PRIVATE
+    ../targets/tdeck/main/board_dos_layout.cpp ../targets/tdeck/main/native_view_prototype.cpp
+    src/dos_text_tables.cpp)
+  target_include_directories(tdeck_native_view_phase3_desktop PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/native-view-generated")
+  target_compile_definitions(tdeck_native_view_phase3_desktop PRIVATE OPENU5_DOS_SCREEN_LAYOUT=1 OPENU5_NATIVE_VIEW_PROTOTYPE=1)
+  add_test(NAME tdeck_native_view_phase3_desktop COMMAND tdeck_native_view_phase3_desktop
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
   # T-Deck Native View Phase 1 (docs/TDECK_NATIVE_VIEW_PHASE1.md): the future T-Deck Native
   # presentation (the 1988 right panel) with the handheld interaction, through raw T-Deck

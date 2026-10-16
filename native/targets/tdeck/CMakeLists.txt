@@ -45,9 +45,11 @@ endif()
 # Unified v0.5.0 release candidate; physical acceptance is still pending.
 set(PROJECT_VER "0.5.0-rc2")
 # The prototype never shares a version line, FW identity or Launcher file name
-# with a release image.
+# with a release image. Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md: Native
+# shops, lists and strip) sets 0.5.0-nativeview-p3-debug, so its development
+# image never shares a name or an FW line with Phase 2's.
 if(OPENU5_NATIVE_VIEW_PROTOTYPE)
-    set(PROJECT_VER "0.5.0-nativeview-p2-debug")
+    set(PROJECT_VER "0.5.0-nativeview-p3-debug")
 endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(openu5_tdeck)

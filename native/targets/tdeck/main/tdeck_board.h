@@ -211,6 +211,14 @@ public:
     bool dos_layout() const { return dos_layout_; }
     /** The panel rows the screen on it fills, from row 0: 200 for the DOS screen, else 240. */
     int picture_height() const;
+    // T-Deck Native View Phase 3 (docs/TDECK_NATIVE_VIEW_PHASE3.md): the DOS
+    // screen's form of the handheld lists, shops and prompts, composed by the
+    // runtime for the next show_alpha (null: none -- Windows Original, Enhanced).
+    // With a frame, an open shop stays on the DOS screen; without one (a
+    // presentation the runtime does not compose for) it falls back to the
+    // handheld screen, which handheld_fallbacks() counts.
+    void set_native_frame(const DeviceNativeFrame *frame) { native_frame_ = frame; }
+    uint32_t handheld_fallbacks() const { return handheld_fallbacks_; }
 #endif
 
 private:
@@ -289,9 +297,9 @@ private:
                              bool animation_only, const DeviceSelectionView *selection,
                              const DeviceContextActionBar *context_bar, DevicePartyHighlight party_highlight,
                              uint32_t viewport_crc, const openu5::HudDungeonBands *dungeon_bands,
-                             bool preserve_party_panel);
-    /** Rows 200..239: the handheld prompt (`bar`, when active) or black; `force` after a full frame. */
-    esp_err_t draw_dos_context_strip(const DeviceContextActionBar *bar, bool force);
+                             bool preserve_party_panel, const DeviceNativeFrame *native);
+    /** Rows 200..239: the handheld strip (`strip`: a prompt, a list's detail, MOVE) or black; `force` after a full frame. */
+    esp_err_t draw_dos_context_strip(const DeviceNativeStrip *strip, bool force);
     esp_err_t dos_camp_viewport(const uint16_t *pixels);
     esp_err_t dos_fill_bed_viewport();
     esp_err_t dos_refresh_bed_status_panel(const openu5::GameState &, DevicePartyHighlight);
@@ -430,10 +438,12 @@ private:
         bool bottom_valid = false;
         char console[kDosConsoleRows][openu5::kUiRenderedLineBytes + 1]{};
         bool console_valid = false;
-        DeviceContextActionBar strip{};
+        DeviceNativeStrip strip{};
         bool strip_shown = false;
     };
     std::unique_ptr<DosScreenCache> dos_cache_;
+    const DeviceNativeFrame *native_frame_ = nullptr;
+    uint32_t handheld_fallbacks_ = 0;
 #endif
     DeviceContextActionBar context_cache_{};
     bool context_cache_valid_ = false;
