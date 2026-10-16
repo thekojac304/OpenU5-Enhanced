@@ -3008,11 +3008,14 @@ bool AlphaRuntime::handle_zstats_input(const openu5::UiAction &action){
 }
 
 const DeviceDosPanel *AlphaRuntime::compose_dos_panel(const openu5::UiSelectionView *current){
-    if(!openu5::platform_dos_interface())return nullptr;
+    // How the panel looks is presentation (platform_dos_panels()); which list
+    // it shows is the interaction model's, already decided by the caller.
+    if(!openu5::platform_dos_panels())return nullptr;
     auto &state=dos_state();auto &panel=state.panel;
     dos_panel_clear(panel);
     const auto text=dos_list_row_text();
-    if(ui_&&ui_->mode()==openu5::UiMode::Shop){
+    // The two shop windows exist only in the 1988 console shops (interaction).
+    if(openu5::platform_dos_interface()&&ui_&&ui_->mode()==openu5::UiMode::Shop){
         const size_t total=openu5::shop_offering_count(game_,shop_,shop_data_);
         const size_t cursor=total?std::min<size_t>(size_t(std::max<int32_t>(0,ui_->shop_cursor())),total-1):0;
         const int key=1000+int(shop_.phase);
@@ -3243,14 +3246,16 @@ const DeviceSelectionView *AlphaRuntime::compose_selection_view(){
         openu5::platform_format(selection_view_.context.actions,sizeof(selection_view_.context.actions),
                       page.kind==openu5::ZStatsPageKind::List&&page.list_total>openu5::kZStatsListRows
                           ?"L/R Page|U/D Scroll|{back}":"Move Page|0-6 Jump|{back}");
-        // The 1988 interaction model: the page under its banner and the console
-        // ("Status: ") still below it -- no member counter, no key legend.
-        if(openu5::platform_dos_interface()){
+        // The 1988 panel: the page under its banner, no member counter, drawn
+        // as the original's panel over the boxes only (presentation)...
+        if(openu5::platform_dos_panels()){
             selection_view_.detail[0]=selection_view_.detail2[0]=0;
-            selection_view_.detail_panel=false;selection_view_.context={};
-            // ...drawn as the original's panel, over the boxes only.
+            selection_view_.detail_panel=false;
             selection_view_.dos=compose_dos_panel(nullptr);
         }
+        // ...and the 1988 interaction model reads "Status: " on the console:
+        // no key legend (interaction).
+        if(openu5::platform_dos_interface())selection_view_.context={};
         return &selection_view_;
     }
     openu5::UiSelectionView current{};if(!ui_->selection_view(current))return nullptr;
@@ -3295,14 +3300,14 @@ const DeviceSelectionView *AlphaRuntime::compose_selection_view(){
     // model's panel is composed from the labels themselves.)
     for(size_t row=0;row<selection_view_.row_count;++row){
         const char *label=selections_[selection_view_.page_start+row].label;
-        if(openu5::platform_dos_interface())std::snprintf(selection_view_.rows[row],sizeof(selection_view_.rows[row]),"%.22s",label);
+        if(openu5::platform_dos_panels())std::snprintf(selection_view_.rows[row],sizeof(selection_view_.rows[row]),"%.22s",label);
         else fit_list_row(selection_view_.rows[row],sizeof(selection_view_.rows[row]),label,21);
     }
     if(cursor<selection_count_){const int value=selections_[cursor].value;
         if(current.mode==openu5::UiMode::SpellSelection){const auto*def=openu5::spell_definition(openu5::SpellId(value));std::snprintf(selection_view_.detail,sizeof(selection_view_.detail),"%.31s",openu5::spell_effect_summary(openu5::SpellId(value)));std::snprintf(selection_view_.detail2,sizeof(selection_view_.detail2),"Target: %.16s  MP%u",openu5::spell_target_label(openu5::SpellId(value)),unsigned(std::min<int>(def?def->circle:0,9)));}
         else if(current.mode==openu5::UiMode::EquipmentSelection){const int member=pending_ready_member_>=0?pending_ready_member_:active_member(game_);const auto slot=openu5::slot_for_equip(value);const int equipped=equipped_in_slot(game_.party.characters[member],slot);std::snprintf(selection_view_.detail,sizeof(selection_view_.detail),"Slot: %s",equip_slot_name(slot));const char *now=equipped>=0&&equipped<48?openu5::equipment_display_name(equipped):"None";
             // LOOK-POLISH1: the detail row is 22 cells; "Current: " leaves 13 for the name.
-            if(openu5::platform_dos_interface())std::snprintf(selection_view_.detail2,sizeof(selection_view_.detail2),"Current: %.18s",now);
+            if(openu5::platform_dos_panels())std::snprintf(selection_view_.detail2,sizeof(selection_view_.detail2),"Current: %.18s",now);
             else{char fitted[16]{};fitted[fit_label(fitted,13,now,"")]='\0';std::snprintf(selection_view_.detail2,sizeof(selection_view_.detail2),"Current: %s",fitted);}}
         else if(current.mode==openu5::UiMode::PartySelection&&value>=0&&value<game_.party.character_count){const auto&m=game_.party.characters[value];std::snprintf(selection_view_.detail,sizeof(selection_view_.detail),"HP %u/%u  MP %u  %c",unsigned(m.current_hp),unsigned(m.max_hp),unsigned(m.current_mp),m.status?m.status:'G');}
         else if(selection_request_==openu5::UiRequestId::MixReagents){const char*spell=openu5::spell_display_name(pending_mix_spell_);std::snprintf(selection_view_.detail,sizeof(selection_view_.detail),"Mix: %.24s",spell?spell:"?");}
@@ -3311,11 +3316,14 @@ const DeviceSelectionView *AlphaRuntime::compose_selection_view(){
     std::snprintf(selection_view_.context.status,sizeof(selection_view_.context.status),"%zu/%zu",cursor+1,current.count);
     openu5::platform_format(selection_view_.context.actions,sizeof(selection_view_.context.actions),
                   selection_request_==openu5::UiRequestId::MixReagents?"Enter Mark|M Mix|{back}":"Move|Confirm|{back} Back");
-    if(openu5::platform_dos_interface()){
+    // The 1988 interaction model reads the list's prompt on the console: no
+    // key legend (interaction).
+    if(openu5::platform_dos_interface())selection_view_.context={};
+    if(openu5::platform_dos_panels()){
         // The 1988 lists (Ready's item page and Use's, ZSTATS 0x0f2e; Mix's
         // reagents, CMDS 0x18be) under their own banners -- the member's name
         // (0x12e8), "Items:" (CAST DS 0x48b8), "Reagents:" (DS 0x8f64) -- with
-        // the console's prompt below and no slot detail or key legend.
+        // no slot detail (presentation).
         if(current.mode==openu5::UiMode::EquipmentSelection){
             const int member=pending_ready_member_>=0?pending_ready_member_:active_member(game_);
             std::snprintf(selection_view_.title,sizeof(selection_view_.title),"%.9s",
@@ -3323,9 +3331,9 @@ const DeviceSelectionView *AlphaRuntime::compose_selection_view(){
         }else if(current.mode==openu5::UiMode::InventorySelection&&selection_request_==openu5::UiRequestId::Inventory)
             std::snprintf(selection_view_.title,sizeof(selection_view_.title),"Items:");
         selection_view_.detail[0]=selection_view_.detail2[0]=0;
-        selection_view_.detail_panel=false;selection_view_.context={};
+        selection_view_.detail_panel=false;
         // Drawn as the original's panel in the boxes' place (the console keeps
-        // its rows and the prompt), not as the T-Deck's right-column list.
+        // its rows), not as the T-Deck's right-column list.
         selection_view_.dos=compose_dos_panel(&current);
     }
     return &selection_view_;
@@ -3343,10 +3351,9 @@ DevicePartyHighlight AlphaRuntime::compose_party_highlight() const{
     if(context_.combat&&combat_.current>=0&&combat_.current<combat_.count){const auto &actor=combat_.actors[combat_.current];if(actor.member!=255)out.actor=int8_t(actor.member);}
     openu5::UiSelectionView view{};
     if(openu5::platform_dos_interface()){
-        // The 1988 interaction model: rows in reverse video instead of tints --
-        // the picker's cursor row under the "Select:" banner (select_party_member
-        // 0x2db2 / 0x2dc1), the arena's acting member at its turn (COMBAT
-        // 0x06df); the active member keeps only its arrow.
+        // The 1988 interaction model chooses members on the roster: the
+        // picker's cursor row under the "Select:" banner (select_party_member
+        // 0x2db2 / 0x2dc1).
         if(ui_&&ui_->selection_view(view)&&view.mode==openu5::UiMode::PartySelection&&view.cursor<selection_count_){
             out.cursor=int8_t(selections_[view.cursor].value);out.select_banner=true;
         }else if(ui_&&ui_->mode()==openu5::UiMode::Shop&&
@@ -3355,6 +3362,11 @@ DevicePartyHighlight AlphaRuntime::compose_party_highlight() const{
             if(openu5::shop_offering_at(game_,shop_,shop_data_,size_t(std::max<int32_t>(0,ui_->shop_cursor())),offer)&&
                offer.item>=0&&offer.item<game_.party.character_count){out.cursor=int8_t(offer.item);out.select_banner=true;}
         }
+    }
+    if(openu5::platform_dos_panels()){
+        // The 1988 roster: rows in reverse video instead of tints -- the
+        // arena's acting member at its turn (COMBAT 0x06df); the active member
+        // keeps only its arrow (presentation).
         out.invert_actor=out.actor;out.actor=-1;
         return out;
     }

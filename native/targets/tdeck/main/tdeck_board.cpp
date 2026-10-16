@@ -981,8 +981,9 @@ esp_err_t Board::show_alpha(const uint16_t *pixels,const openu5::UiSession &ui,
         ESP_RETURN_ON_ERROR(fill_rect(openu5::kHudPartyFrameX,0,kDisplayWidth-openu5::kHudPartyFrameX,kDisplayHeight,kBlack),kTag,"leave shop panel");
         shop_cache_valid_=false;context_cache_valid_=false;alpha_ui_cache_valid_=false;
     }
-    // Windows port, the 1988 interaction model: a DOS panel covers only the
-    // roster and status boxes (draw_dos_panel); the console stays the world's.
+    // Windows port, the 1988 right panel (a presentation capability, compiled
+    // out where kPlatformSupportsDosPresentation is false): a DOS panel covers
+    // only the roster and status boxes (draw_dos_panel); the console stays the world's.
     const bool dos_panel=openu5::kPlatformSupportsDosPresentation&&selection&&selection->active&&selection->dos;
     if((!selection||!selection->active||dos_panel)&&selection_cache_valid_){
         ESP_RETURN_ON_ERROR(fill_rect(openu5::kHudPartyFrameX,0,kDisplayWidth-openu5::kHudPartyFrameX,kDisplayHeight,kBlack),kTag,"leave compact selector");

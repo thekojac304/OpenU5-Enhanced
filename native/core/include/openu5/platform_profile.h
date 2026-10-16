@@ -12,6 +12,22 @@ namespace openu5 {
 // always shown -- so a build that never calls set_platform_profile() (the
 // firmware) behaves exactly as before. A desktop build installs its own
 // profile once, at start-up, before any view is composed.
+//
+// T-Deck Native View Phase 1 (docs/TDECK_NATIVE_VIEW_PHASE1.md): the 1988
+// switches below fall into groups that are decided independently and must
+// not read one another:
+//   Presentation -- how the game is drawn: dos_screen (the 320 x 200
+//                   geometry), dos_panels (the 1988 right-panel lists, Z-stats
+//                   pages and reverse-video roster) and dos_text (the DOS
+//                   tables' short names).
+//   Interaction  -- how the player drives it: dos_interface (the 1988
+//                   prompts, cancel/confirm keys, roster pickers and console
+//                   shops), typed_spell_names and quit_save_key.
+//   Journey      -- what the System Menu offers: enhanced_rows (Difficulty and
+//                   Cheats). Difficulty, cheats and the saved enhancement flags
+//                   themselves live in the GameState and the save; no
+//                   presentation or interaction switch reads or writes them.
+// A null callback is the T-Deck's choice for every switch.
 
 // The Settings page's rows. The first seven are the T-Deck's, in its order
 // (SystemMenuSession::SettingsRow has the same values); a platform may also
@@ -52,7 +68,7 @@ struct PlatformProfile {
     void *settings_context = nullptr;
     PlatformRow platform_rows[kPlatformRowCount]{};
 
-    // --- Spell names -------------------------------------------------------
+    // --- Interaction: spell names -----------------------------------------
     // Whether Cast and Mix ask for the spell the 1988 way -- typed syllable
     // initials, CAST2.OVL:0x00DE (openu5/spell_entry.h) -- instead of the
     // T-Deck's spell list. Null = the list (the T-Deck).
@@ -64,17 +80,30 @@ struct PlatformProfile {
     bool (*quit_save_key)(void *context) = nullptr;
     void *quit_save_context = nullptr;
 
-    // --- The 1988 interaction model ------------------------------------------
+    // --- Interaction: the 1988 interaction model ------------------------------
     // Whether the interface follows the DOS game's own interaction model
     // (native/targets/windows/ORIGINAL_MODE_FIDELITY.md): members are chosen
     // on the roster by a reverse-video row under a "Select:" caption instead
     // of a list panel; prompts are typed inline on the console with the 1988
     // key rules (ESC clears a typed line, a getdir ignores ESC and takes Space
     // as "Pass", a Y/N question takes only Y or N) instead of the device's
-    // context bar and its key legends; and the prompts, echoes and cancel
-    // strings are the binary's own. Null = the T-Deck's handheld interface.
+    // context bar and its key legends; the shops are the 1988 console shops;
+    // and the prompts, echoes and cancel strings are the binary's own. Null =
+    // the T-Deck's handheld interface. It decides behaviour only: how lists
+    // and panels look is dos_panels'.
     bool (*dos_interface)(void *context) = nullptr;
     void *dos_interface_context = nullptr;
+
+    // --- Presentation ---------------------------------------------------------
+    // Whether the right panel is drawn the 1988 way: the (R)eady, (U)se and
+    // Mix lists and the Z-stats pages as the original's panel over the roster
+    // and status boxes (DeviceDosPanel) under the DOS banners, list rows cut
+    // the DOS way, and the roster's acting member in reverse video instead of
+    // the handheld's tints. It changes no key, prompt, cursor rule or command:
+    // the list a panel shows is the one the interaction model opened. Null =
+    // the handheld's right panel (the T-Deck).
+    bool (*dos_panels)(void *context) = nullptr;
+    void *dos_panels_context = nullptr;
     // The DOS game's own short names and glyphs for its right-panel lists
     // (the (U)se and (R)eady pickers, Z-stats' lists, Mix's reagents, the
     // blacksmith's "Arms" window), read from the player's game data by the
@@ -90,7 +119,7 @@ struct PlatformProfile {
     bool (*dos_screen)(void *context) = nullptr;
     void *dos_screen_context = nullptr;
 
-    // --- System Menu --------------------------------------------------------
+    // --- Journey: System Menu ---------------------------------------------
     // Whether the root lists Difficulty and Cheats. Null = always (the T-Deck).
     bool (*enhanced_rows)(void *context) = nullptr;
     void *enhanced_context = nullptr;
@@ -113,22 +142,56 @@ bool platform_enhanced_rows();
 // Desktop/ordinary host builds keep the callback-based profile below. Keeping
 // this boundary in one header lets normal dead-code elimination discard DOS
 // presentation without forking any gameplay rules or changing profile layout.
-#if defined(OPENU5_FIXED_HANDHELD_PROFILE) && OPENU5_FIXED_HANDHELD_PROFILE
-inline constexpr bool kPlatformSupportsDosPresentation = false;
+//
+// The two policy groups are fixed separately, so a build can keep the
+// handheld interaction compiled down to constants while it presents the DOS
+// screen (the future T-Deck Native View):
+//   OPENU5_FIXED_HANDHELD_INTERACTION  -- dos_interface, typed_spell_names and
+//                                         quit_save_key are constant false.
+//   OPENU5_FIXED_HANDHELD_PRESENTATION -- dos_screen, dos_panels and dos_text
+//                                         are constant false / null.
+//   OPENU5_FIXED_HANDHELD_PROFILE      -- both (the v0.5.0 firmware).
+// The Journey switch (enhanced_rows) is never fixed: the T-Deck shows both rows.
+#if (defined(OPENU5_FIXED_HANDHELD_PROFILE) && OPENU5_FIXED_HANDHELD_PROFILE) || \
+    (defined(OPENU5_FIXED_HANDHELD_INTERACTION) && OPENU5_FIXED_HANDHELD_INTERACTION)
+#define OPENU5_HANDHELD_INTERACTION_IS_FIXED 1
+#else
+#define OPENU5_HANDHELD_INTERACTION_IS_FIXED 0
+#endif
+#if (defined(OPENU5_FIXED_HANDHELD_PROFILE) && OPENU5_FIXED_HANDHELD_PROFILE) || \
+    (defined(OPENU5_FIXED_HANDHELD_PRESENTATION) && OPENU5_FIXED_HANDHELD_PRESENTATION)
+#define OPENU5_HANDHELD_PRESENTATION_IS_FIXED 1
+#else
+#define OPENU5_HANDHELD_PRESENTATION_IS_FIXED 0
+#endif
+
+// --- Interaction ---------------------------------------------------------------
+#if OPENU5_HANDHELD_INTERACTION_IS_FIXED
+inline constexpr bool kPlatformSupportsDosInteraction = false;
 inline constexpr bool platform_typed_spell_names() { return false; }
 inline constexpr bool platform_quit_save_key() { return false; }
 inline constexpr bool platform_dos_interface() { return false; }
-inline constexpr bool platform_dos_screen() { return false; }
 #else
-inline constexpr bool kPlatformSupportsDosPresentation = true;
+inline constexpr bool kPlatformSupportsDosInteraction = true;
 /** Whether Cast and Mix take a typed spell name now (false on the T-Deck). */
 bool platform_typed_spell_names();
 /** Whether Q is (Q)uit & Save now (false on the T-Deck). */
 bool platform_quit_save_key();
 /** Whether the 1988 interaction model is active now (false on the T-Deck). */
 bool platform_dos_interface();
+#endif
+
+// --- Presentation --------------------------------------------------------------
+#if OPENU5_HANDHELD_PRESENTATION_IS_FIXED
+inline constexpr bool kPlatformSupportsDosPresentation = false;
+inline constexpr bool platform_dos_screen() { return false; }
+inline constexpr bool platform_dos_panels() { return false; }
+#else
+inline constexpr bool kPlatformSupportsDosPresentation = true;
 /** Whether the game screen is the DOS game's 320 x 200 one now (false on the T-Deck). */
 bool platform_dos_screen();
+/** Whether the right panel is drawn the 1988 way now (false on the T-Deck). */
+bool platform_dos_panels();
 #endif
 
 /**
@@ -145,8 +208,8 @@ enum class DosText : uint8_t {
     Spell,          // DS 0x19e2: 48 short spell names ("In Sanct G")
     Literal,        // a NUL-terminated DGROUP string at DS `index` ("--", "Moonstone ")
 };
-/** The platform's DOS text, or nullptr (always on the T-Deck). */
-#if defined(OPENU5_FIXED_HANDHELD_PROFILE) && OPENU5_FIXED_HANDHELD_PROFILE
+/** The platform's DOS text, or nullptr (always on the T-Deck). A presentation capability. */
+#if OPENU5_HANDHELD_PRESENTATION_IS_FIXED
 inline constexpr const char *platform_dos_text(DosText, int) { return nullptr; }
 #else
 const char *platform_dos_text(DosText table, int index);

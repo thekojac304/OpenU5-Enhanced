@@ -148,8 +148,9 @@ inline void fit_list_row(char *out,size_t capacity,const char *label,size_t cell
     out[fit_label(out,cells,name,short_tail)]='\0';
 }
 
-// Windows port, the 1988 interaction model (platform_dos_interface()): the DOS
-// game's right panel, text window 1 = cols 24..39 x rows 1..9 of its 40 x 25
+// Windows port, the 1988 right panel (platform_dos_panels(), a presentation
+// capability; the list it shows is the interaction model's): the DOS game's
+// right panel, text window 1 = cols 24..39 x rows 1..9 of its 40 x 25
 // screen (ZSTATS set_text_window(1,0x18,1,0x27,9); re/notes/ztats-layout.md
 // section 0), as cells: IBM.CH codes, or RUNES.CH where `runes` says so
 // (set_font 0x3abe = kernel 0x1c9e), in reverse video where `inverse` says so
@@ -301,10 +302,11 @@ struct DevicePartyHighlight {
     // owns the precedence rule this field is the top of.
     int8_t damage_flash=-1;
     // Windows port, the 1988 interaction model (platform_dos_interface()):
-    // the roster picker's cursor row and the arena actor's row in reverse
-    // video, the same 0x2a28 primitive below damage_flash (select_party_member
-    // 0x2dc1, COMBAT 0x06df); and the picker's "Select:" banner (0x2db2) in the
-    // status caption row. The defaults draw exactly what the T-Deck draws.
+    // the roster picker's cursor row and its "Select:" banner (0x2db2) in the
+    // status caption row; and the 1988 roster (platform_dos_panels()): the
+    // arena actor's row. Both in reverse video, the same 0x2a28 primitive
+    // below damage_flash (select_party_member 0x2dc1, COMBAT 0x06df). The
+    // defaults draw exactly what the T-Deck draws.
     int8_t cursor=-1;
     int8_t invert_actor=-1;
     bool select_banner=false;

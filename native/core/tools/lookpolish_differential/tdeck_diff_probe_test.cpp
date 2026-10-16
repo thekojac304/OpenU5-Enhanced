@@ -709,6 +709,7 @@ int main(int argc, char **argv) {
         p.typed_spell_names = [](void *) { return true; };
         p.quit_save_key = [](void *) { return true; };
         p.dos_interface = [](void *) { return true; };
+        p.dos_panels = [](void *) { return true; };
         set_platform_profile(p);
     }
 #endif

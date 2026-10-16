@@ -66,7 +66,7 @@ size_t platform_format(char *out, size_t capacity, const char *text) {
     return n;
 }
 
-#if !defined(OPENU5_FIXED_HANDHELD_PROFILE) || !OPENU5_FIXED_HANDHELD_PROFILE
+#if !OPENU5_HANDHELD_INTERACTION_IS_FIXED
 bool platform_typed_spell_names() {
     return g_profile.typed_spell_names && g_profile.typed_spell_names(g_profile.typed_spell_context);
 }
@@ -78,15 +78,20 @@ bool platform_quit_save_key() {
 bool platform_dos_interface() {
     return g_profile.dos_interface && g_profile.dos_interface(g_profile.dos_interface_context);
 }
+#endif
 
+#if !OPENU5_HANDHELD_PRESENTATION_IS_FIXED
 bool platform_dos_screen() {
     return g_profile.dos_screen && g_profile.dos_screen(g_profile.dos_screen_context);
+}
+
+bool platform_dos_panels() {
+    return g_profile.dos_panels && g_profile.dos_panels(g_profile.dos_panels_context);
 }
 
 const char *platform_dos_text(DosText table, int index) {
     return g_profile.dos_text ? g_profile.dos_text(g_profile.dos_text_context, uint8_t(table), index) : nullptr;
 }
-
 #endif
 
 bool platform_enhanced_rows() {

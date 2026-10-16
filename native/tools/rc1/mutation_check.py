@@ -15,8 +15,10 @@ MUTANTS = [
     ('quit_save', 'platform_quit_save_key() { return false; }', 'platform_quit_save_key() { return true; }'),
     ('dos_interface', 'platform_dos_interface() { return false; }', 'platform_dos_interface() { return true; }'),
     ('dos_screen', 'platform_dos_screen() { return false; }', 'platform_dos_screen() { return true; }'),
+    ('dos_panels', 'platform_dos_panels() { return false; }', 'platform_dos_panels() { return true; }'),
     ('dos_text', 'platform_dos_text(DosText, int) { return nullptr; }', 'platform_dos_text(DosText, int) { return "mutant"; }'),
     ('board_capability', 'kPlatformSupportsDosPresentation = false;', 'kPlatformSupportsDosPresentation = true;'),
+    ('interaction_capability', 'kPlatformSupportsDosInteraction = false;', 'kPlatformSupportsDosInteraction = true;'),
 ]
 
 
@@ -75,7 +77,8 @@ def main():
         print('KILLED leaked Windows TU capability', flush=True)
     else:
         raise ValueError('SURVIVED Windows capability leak')
-    print('8/8 boundary mutants killed; source restored; unmutated test PASS')
+    total = len(MUTANTS) + 2
+    print(f'{total}/{total} boundary mutants killed; source restored; unmutated test PASS')
 
 
 if __name__ == '__main__':

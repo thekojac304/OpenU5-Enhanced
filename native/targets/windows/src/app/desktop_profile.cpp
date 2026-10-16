@@ -160,6 +160,11 @@ void DesktopProfile::install(const Hooks &hooks) {
     // the handheld's list panels and key legends.
     p.dos_interface = &DesktopProfile::original_mode;
     p.dos_interface_context = this;
+    // Original also draws the right panel the 1988 way -- its lists, Z-stats
+    // pages and reverse-video roster -- on either game screen (presentation;
+    // the interaction rows above stay independent of it).
+    p.dos_panels = &DesktopProfile::original_mode;
+    p.dos_panels_context = this;
     p.dos_text = &DesktopProfile::dos_text;
     p.dos_text_context = this;
     p.dos_screen = &DesktopProfile::dos_screen;

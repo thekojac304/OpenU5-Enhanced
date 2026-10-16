@@ -30,6 +30,11 @@ the audit showing that the T-Deck is unchanged.
   "Select:" caption, overlays without a footer). The Windows key map
   (`desktop_input.cpp`) differs between the modes only for the Camp guard's
   digits (below) and the Enhanced-only shortcuts it already had.
+- Since T-Deck Native View Phase 1 ([record](../../../docs/TDECK_NATIVE_VIEW_PHASE1.md)),
+  how the right panel looks (the 1988 list/Z-stats panels, list row cuts, the
+  reverse-video arena actor) is its own presentation switch,
+  `PlatformProfile::dos_panels` / `platform_dos_panels()`. `DesktopProfile`
+  installs it with the same Original predicate, so Original is unchanged.
 - Interface mode can be switched in Settings at any time; it changes how the
   player drives the game, never the journey's rules or saves (D8).
 

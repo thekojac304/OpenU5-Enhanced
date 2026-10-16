@@ -25,6 +25,26 @@ if(BUILD_TESTING)
     endif()
     add_test(NAME rc1_profile_${_profile} COMMAND rc1_profile_${_profile})
   endforeach()
+  # T-Deck Native View Phase 1 (docs/TDECK_NATIVE_VIEW_PHASE1.md): the presentation,
+  # interaction and journey switches decided independently -- the four configurations'
+  # matrix in the dynamic, fixed-handheld (v0.5.0 firmware) and interaction-only-fixed
+  # (future T-Deck Native) builds, and UiSession's interaction traced per profile.
+  add_executable(tdeck_native_policy_dynamic tests/tdeck_native_policy_test.cpp)
+  target_link_libraries(tdeck_native_policy_dynamic PRIVATE openu5_core)
+  add_test(NAME tdeck_native_policy_dynamic COMMAND tdeck_native_policy_dynamic)
+  foreach(_profile handheld native_handheld)
+    add_executable(tdeck_native_policy_${_profile} tests/tdeck_native_policy_test.cpp src/platform_profile.cpp)
+    target_include_directories(tdeck_native_policy_${_profile} PRIVATE include)
+    target_compile_features(tdeck_native_policy_${_profile} PRIVATE cxx_std_17)
+    if(_profile STREQUAL "handheld")
+      target_compile_definitions(tdeck_native_policy_${_profile} PRIVATE
+        POLICY_MATRIX_ONLY=1 OPENU5_FIXED_HANDHELD_PROFILE=1 EXPECT_FIXED_HANDHELD=1)
+    else()
+      target_compile_definitions(tdeck_native_policy_${_profile} PRIVATE
+        POLICY_MATRIX_ONLY=1 OPENU5_FIXED_HANDHELD_INTERACTION=1 EXPECT_FIXED_INTERACTION=1)
+    endif()
+    add_test(NAME tdeck_native_policy_${_profile} COMMAND tdeck_native_policy_${_profile})
+  endforeach()
 endif()
 option(OPENU5_REAL_ARENAS "Validate extracted original combat arenas (requires user assets and Node)" OFF)
 option(OPENU5_BUILD_CAPTURE "Build native_capture_runtime, the screenshot capture tool (not a test; needs user assets to run)" OFF)
@@ -2666,6 +2686,13 @@ if(BUILD_TESTING)
   endif()
   openu5_a4_ui2_runtime(win_dos_runtime)
   add_test(NAME win_dos_runtime COMMAND win_dos_runtime
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
+  # T-Deck Native View Phase 1 (docs/TDECK_NATIVE_VIEW_PHASE1.md): the future T-Deck Native
+  # presentation (the 1988 right panel) with the handheld interaction, through raw T-Deck
+  # keys on the REAL AlphaRuntime and Board: the same interaction, transcript, journey state
+  # and save bytes as the T-Deck; the Windows Original switches as the positive control.
+  openu5_a4_ui2_runtime(tdeck_native_policy_runtime)
+  add_test(NAME tdeck_native_policy_runtime COMMAND tdeck_native_policy_runtime
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
   # SPP1 (docs/SHARED_PRESERVATION_PARITY_SPP1.md): the shared preservation corrections that
   # live in the runtime, through the REAL AlphaRuntime and Board (desktop actions and raw keys).

@@ -17,6 +17,11 @@ def verify(commands, handheld):
         fixed = '-DOPENU5_FIXED_HANDHELD_PROFILE=1' in command or '/DOPENU5_FIXED_HANDHELD_PROFILE=1' in command
         if fixed != handheld:
             raise ValueError(f'Wrong handheld capability for {entry["file"]}')
+        # The per-group switches (platform_profile.h) must not leak into a desktop build either.
+        partial = any(f'{flag}OPENU5_FIXED_HANDHELD_{group}' in command
+                      for flag in ('-D', '/D') for group in ('INTERACTION', 'PRESENTATION'))
+        if partial and not handheld:
+            raise ValueError(f'Handheld policy group leaked into {entry["file"]}')
         if handheld and ('-Werror' not in command or '-fstack-usage' not in command):
             raise ValueError(f'Lost firmware warning/stack checks for {entry["file"]}')
     return len(selected)

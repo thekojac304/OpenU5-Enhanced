@@ -773,6 +773,59 @@ void dos_screen() {
           "S12 the window is shaped for 200 rows in Original's DOS screen only");
 }
 
+// --- 9. The capability policy (docs/TDECK_NATIVE_VIEW_PHASE1.md) ---------------------
+// The Windows profile's switches, group by group, in each Interface mode and
+// Original screen: Original is the 1988 presentation AND interaction, Enhanced
+// neither; the screen choice moves only dos_screen; the Journey row follows the
+// Interface mode alone. Exactly v0.5.0's decisions, now through separate switches.
+struct Policy {
+    bool screen, panels, interaction, typed, quit_save, enhanced_rows;
+};
+Policy policy_now() {
+    return {openu5::platform_dos_screen(),        openu5::platform_dos_panels(),   openu5::platform_dos_interface(),
+            openu5::platform_typed_spell_names(), openu5::platform_quit_save_key(), openu5::platform_enhanced_rows()};
+}
+std::string policy_text(const Policy &p) {
+    return format("screen=%d panels=%d interaction=%d typed=%d quit_save=%d enhanced_rows=%d", p.screen, p.panels,
+                  p.interaction, p.typed, p.quit_save, p.enhanced_rows);
+}
+
+void capability_policy() {
+    ProfileProbe probe;
+    uv::DesktopProfile profile;
+    uv::DesktopProfile::Hooks hooks;
+    hooks.settings = &probe.settings;
+    hooks.context = &probe;
+    hooks.changed = &ProfileProbe::changed;
+    profile.install(hooks);
+    check(openu5::kPlatformSupportsDosPresentation && openu5::kPlatformSupportsDosInteraction,
+          "K1 the desktop build compiles both 1988 groups (neither is fixed to the handheld)");
+    probe.settings.interface_mode = uv::InterfaceMode::Original;
+    probe.settings.original_screen = uv::OriginalScreen::Dos;
+    Policy p = policy_now();
+    check(p.screen && p.panels && p.interaction && p.typed && p.quit_save && !p.enhanced_rows,
+          "K2 Original, DOS screen: the 1988 screen, panels and interaction; no Difficulty/Cheats rows", policy_text(p));
+    probe.settings.original_screen = uv::OriginalScreen::Handheld;
+    p = policy_now();
+    check(!p.screen && p.panels && p.interaction && p.typed && p.quit_save && !p.enhanced_rows,
+          "K3 Original, handheld screen: only dos_screen changes -- the panels, interaction and Journey row stay",
+          policy_text(p));
+    probe.settings.interface_mode = uv::InterfaceMode::Enhanced;
+    for (const auto screen : {uv::OriginalScreen::Dos, uv::OriginalScreen::Handheld}) {
+        probe.settings.original_screen = screen;
+        p = policy_now();
+        check(!p.screen && !p.panels && !p.interaction && !p.typed && !p.quit_save && p.enhanced_rows,
+              format("K4 Enhanced (%s screen setting): the handheld presentation and interaction, Difficulty/Cheats shown",
+                     uv::original_screen_name(screen)),
+              policy_text(p));
+    }
+    const auto &installed = openu5::platform_profile();
+    check(installed.dos_panels && installed.dos_panels_context == &profile && installed.dos_interface &&
+              installed.dos_interface != installed.dos_screen,
+          "K5 the panels and interaction switches are installed as separate callbacks from the screen's");
+    openu5::set_platform_profile(openu5::PlatformProfile{});
+}
+
 } // namespace
 
 int main() {
@@ -785,5 +838,6 @@ int main() {
     window_plans();
     display_row();
     dos_screen();
+    capability_policy();
     return uvtest::finish("uv_presentation_test");
 }

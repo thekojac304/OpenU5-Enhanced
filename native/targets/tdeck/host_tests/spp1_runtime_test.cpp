@@ -202,6 +202,7 @@ struct DosProfile {
         p.typed_spell_names = [](void *) { return g_dos; };
         p.quit_save_key = [](void *) { return g_dos; };
         p.dos_interface = [](void *) { return g_dos; };
+        p.dos_panels = [](void *) { return g_dos; }; // Original's 1988 right panel (presentation)
         set_platform_profile(p);
     }
     ~DosProfile() {
