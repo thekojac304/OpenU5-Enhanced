@@ -197,14 +197,16 @@ public:
     void set_idle_service(IdleService *service) { idle_ = service; }
     const BoardDrawCalls &draw_calls() const { return draw_calls_; }
     void reset_draw_calls() { draw_calls_ = {}; }
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
-    // Windows port, Original mode (openu5::platform_dos_screen): the game screen
-    // is the DOS game's own 320 x 200 one on the panel's rows 0..199 --
-    // ULTIMA.EXE's frame (0x63ac..0x64f7), the map whole at (8,8) with the sky
-    // and wind bands outside it, the right panel's two boxes and the 16 x 13
-    // console -- instead of the handheld's 320 x 240 screen. The frontend and
-    // the Developer screen stay the handheld's. Built only into the desktop
-    // target (board_dos_layout.cpp): the T-Deck compiles none of it.
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
+    // The DOS screen (openu5::platform_dos_screen; Windows Original, and the
+    // T-Deck Native View prototype): the game screen is the DOS game's own
+    // 320 x 200 one on the panel's rows 0..199 -- ULTIMA.EXE's frame
+    // (0x63ac..0x64f7), the map whole at (8,8) with the sky and wind bands
+    // outside it, the right panel's two boxes and the 16 x 13 console --
+    // instead of the handheld's 320 x 240 screen. Rows 200..239 are black but
+    // for a handheld prompt (draw_dos_context_strip). The frontend and the
+    // Developer screen stay the handheld's. board_dos_layout.cpp; built where
+    // OPENU5_DOS_SCREEN_LAYOUT is defined (Windows; the T-Deck's prototype image).
     void set_dos_layout(bool on);
     bool dos_layout() const { return dos_layout_; }
     /** The panel rows the screen on it fills, from row 0: 200 for the DOS screen, else 240. */
@@ -280,13 +282,16 @@ private:
      * original's geometry; the console below is not touched.
      */
     esp_err_t draw_dos_panel(const DeviceDosPanel &panel, const uint8_t *runes_font);
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     // board_dos_layout.cpp: show_alpha, the camp and bed draws on the DOS screen.
     esp_err_t show_alpha_dos(const uint16_t *pixels, const openu5::UiSession &, const openu5::GameState &,
                              const openu5::HudWorldState &, const uint8_t *runes_font, const uint8_t *animated_cells,
                              bool animation_only, const DeviceSelectionView *selection,
-                             DevicePartyHighlight party_highlight, uint32_t viewport_crc,
-                             const openu5::HudDungeonBands *dungeon_bands, bool preserve_party_panel);
+                             const DeviceContextActionBar *context_bar, DevicePartyHighlight party_highlight,
+                             uint32_t viewport_crc, const openu5::HudDungeonBands *dungeon_bands,
+                             bool preserve_party_panel);
+    /** Rows 200..239: the handheld prompt (`bar`, when active) or black; `force` after a full frame. */
+    esp_err_t draw_dos_context_strip(const DeviceContextActionBar *bar, bool force);
     esp_err_t dos_camp_viewport(const uint16_t *pixels);
     esp_err_t dos_fill_bed_viewport();
     esp_err_t dos_refresh_bed_status_panel(const openu5::GameState &, DevicePartyHighlight);
@@ -408,7 +413,7 @@ private:
     // draws one: the T-Deck never does, so its .bss keeps only the pointer).
     std::unique_ptr<DeviceDosPanel> dos_panel_cache_;
     bool dos_panel_cache_valid_ = false;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     // The DOS screen: whether it is selected, whether its frame is on the panel
     // (anything else that paints the panel clears alpha_drawn_ or sets
     // frontend_drawn_ / debug_drawn_), and what each part last drew.
@@ -425,6 +430,8 @@ private:
         bool bottom_valid = false;
         char console[kDosConsoleRows][openu5::kUiRenderedLineBytes + 1]{};
         bool console_valid = false;
+        DeviceContextActionBar strip{};
+        bool strip_shown = false;
     };
     std::unique_ptr<DosScreenCache> dos_cache_;
 #endif

@@ -1,9 +1,17 @@
-// Windows port, Original mode: the DOS game's own 320 x 200 game screen on the
-// virtual panel's rows 0..199 (Board::set_dos_layout, openu5::platform_dos_screen),
-// in place of the handheld's 320 x 240 one. Built only into the desktop target:
-// native/targets/windows/CMakeLists.txt lists this file and defines
-// OPENU5_DESKTOP_DOS_LAYOUT; the T-Deck firmware compiles none of it, and
-// tdeck_board.cpp's handheld screen is the same code it always was.
+// The DOS game's own 320 x 200 game screen on the panel's rows 0..199
+// (Board::set_dos_layout, openu5::platform_dos_screen), in place of the
+// handheld's 320 x 240 one: Windows Original, and the T-Deck Native View
+// prototype (docs/TDECK_NATIVE_VIEW_PHASE2.md). Built where
+// OPENU5_DOS_SCREEN_LAYOUT is defined -- native/targets/windows/CMakeLists.txt,
+// and the T-Deck firmware only with OPENU5_NATIVE_VIEW_PROTOTYPE; the
+// production firmware compiles none of it, and tdeck_board.cpp's handheld
+// screen is the same code it always was.
+//
+// Rows 200..239 below the picture are black. With the handheld interaction
+// (the T-Deck), a prompt's or a list's context bar -- the question and its key
+// legend, which the handheld never prints on the console -- is shown there
+// while it is active (draw_dos_context_strip), and the strip is black again
+// when it closes. Windows Original composes no context bar: its strip stays black.
 //
 // The geometry is ULTIMA.EXE's frame, 0x63ac..0x64f7 (the web port's
 // fiel/frame.ts FRAME_FILLS / FRAME_GLYPHS / FRAME_SEGMENTS), checked pixel by
@@ -40,15 +48,15 @@
 #include "native_renderer.h"
 #include "tdeck_pins.h"
 
-#if !defined(OPENU5_DESKTOP_DOS_LAYOUT)
-#error "board_dos_layout.cpp is the desktop target's alone (OPENU5_DESKTOP_DOS_LAYOUT)"
+#if !defined(OPENU5_DOS_SCREEN_LAYOUT)
+#error "board_dos_layout.cpp needs OPENU5_DOS_SCREEN_LAYOUT (the Board's layout depends on it)"
 #endif
 
 namespace tdeck {
 namespace {
 constexpr char kTag[] = "BoardDos";
 constexpr int kDisplayWidth = 320, kDisplayHeight = 240, kScreenHeight = 200;
-constexpr uint16_t kBlack = 0x0000, kWhite = 0xFFFF, kYellow = 0xFFE0;
+constexpr uint16_t kBlack = 0x0000, kWhite = 0xFFFF, kYellow = 0xFFE0, kCyan = 0x07FF, kGreen = 0x07E0;
 constexpr uint16_t kBand = 0x0015; // the handheld frame's band (kChromeBand), EGA 1
 constexpr int kMapX = 8, kMapY = 8, kMapSize = openu5::kViewportPixels;
 static_assert(kMapSize == 176, "the DOS map is 11 x 11 tiles of 16 px");
@@ -74,6 +82,12 @@ constexpr char kConsoleBullet = '\x10';
 constexpr uint8_t kCornerTopLeft[8] = {0x07, 0x1f, 0x3f, 0x7f, 0x7f, 0xff, 0xff, 0xff};
 constexpr uint8_t kCornerTopRight[8] = {0xe0, 0xf8, 0xfc, 0xfe, 0xfe, 0xff, 0xff, 0xff};
 constexpr uint8_t kCornerBottomLeft[8] = {0xff, 0xff, 0xff, 0x7f, 0x7f, 0x3f, 0x1f, 0x07};
+// The handheld prompt strip under the picture (rows 200..239): a rule, the
+// context bar's status (the question) and its actions (the key legend), in
+// the handheld's text cells, as tdeck_board.cpp's context bar draws them.
+constexpr int kStripY = kScreenHeight, kStripH = kDisplayHeight - kScreenHeight;
+constexpr int kStripRuleY = kStripY + 3, kStripStatusY = kStripY + 8, kStripActionsY = kStripY + 24;
+constexpr int kStripTextX = 4, kStripTextW = kDisplayWidth - 8, kStripTextH = 9;
 // The roster row (roster.ts / kernel 0x27ab): name in 9, the arrow, HP in 4, the status letter.
 constexpr uint8_t kRosterArrow = 0x1a;
 
@@ -157,6 +171,9 @@ template <class PixelAt> esp_err_t Board::paint_rect(int x, int y, int width, in
         transaction.tx_buffer = transfer_row_.data();
         used = 0;
         ESP_RETURN_ON_ERROR(tft_row(transaction, mark), kTag, "write DOS screen rows");
+        // The pause every 16 rows (A3-04E) that every other row loop takes:
+        // a full frame is 240 rows, and audio and SD share this core.
+        if (openu5::tft_row_yield_due(row)) tft_yield();
     }
     debug_last_pixels_ += size_t(width) * size_t(height);
     ++debug_last_dirty_regions_;
@@ -349,11 +366,41 @@ esp_err_t Board::draw_dos_console(const openu5::UiSession &ui, bool force) {
     return ESP_OK;
 }
 
+esp_err_t Board::draw_dos_context_strip(const DeviceContextActionBar *bar, bool force) {
+    auto &cache = *dos_cache_;
+    const bool active = bar && bar->active;
+    if (!active) {
+        // Closed: black again (draw_dos_frame paints it black on a full frame).
+        if (!cache.strip_shown) return ESP_OK;
+        ESP_RETURN_ON_ERROR(fill_rect(0, kStripY, kDisplayWidth, kStripH, kBlack), kTag, "clear the prompt strip");
+        ++debug_last_dirty_regions_;
+        debug_last_pixels_ += size_t(kDisplayWidth) * kStripH;
+        cache.strip_shown = false;
+        return ESP_OK;
+    }
+    const bool first = force || !cache.strip_shown;
+    if (first) {
+        ESP_RETURN_ON_ERROR(fill_rect(0, kStripY, kDisplayWidth, kStripH, kBlack), kTag, "open the prompt strip");
+        ESP_RETURN_ON_ERROR(fill_rect(kStripTextX, kStripRuleY, kStripTextW, 1, kWhite), kTag, "prompt strip rule");
+    }
+    if (first || std::strcmp(cache.strip.status, bar->status) != 0)
+        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripStatusY, kStripTextW, kStripTextH, bar->status, kCyan), kTag,
+                            "prompt strip status");
+    if (first || std::strcmp(cache.strip.actions, bar->actions) != 0)
+        ESP_RETURN_ON_ERROR(draw_text_box(kStripTextX, kStripActionsY, kStripTextW, kStripTextH, bar->actions, kGreen), kTag,
+                            "prompt strip actions");
+    ++debug_last_dirty_regions_;
+    cache.strip = *bar;
+    cache.strip_shown = true;
+    return ESP_OK;
+}
+
 esp_err_t Board::show_alpha_dos(const uint16_t *pixels, const openu5::UiSession &ui, const openu5::GameState &game,
                                 const openu5::HudWorldState &hud, const uint8_t *runes_font, const uint8_t *animated_cells,
                                 bool animation_only, const DeviceSelectionView *selection,
-                                DevicePartyHighlight party_highlight, uint32_t viewport_crc,
-                                const openu5::HudDungeonBands *dungeon_bands, bool preserve_party_panel) {
+                                const DeviceContextActionBar *context_bar, DevicePartyHighlight party_highlight,
+                                uint32_t viewport_crc, const openu5::HudDungeonBands *dungeon_bands,
+                                bool preserve_party_panel) {
     debug_last_full_redraw_ = false;
     debug_last_dirty_regions_ = 0;
     debug_last_pixels_ = 0;
@@ -479,7 +526,14 @@ esp_err_t Board::show_alpha_dos(const uint16_t *pixels, const openu5::UiSession 
         cache.panel = *panel;
         cache.panel_valid = true;
     }
-    return draw_dos_console(ui, full);
+    ESP_RETURN_ON_ERROR(draw_dos_console(ui, full), kTag, "draw the console");
+    // The handheld interaction's prompt and key legend: the context bar, or a
+    // list's own (the handheld draws that one inside its selector panel).
+    const DeviceContextActionBar *strip = context_bar && context_bar->active ? context_bar
+                                          : selection && selection->active && selection->context.active
+                                              ? &selection->context
+                                              : nullptr;
+    return draw_dos_context_strip(strip, full);
 }
 
 esp_err_t Board::dos_camp_viewport(const uint16_t *pixels) {

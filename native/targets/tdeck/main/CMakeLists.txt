@@ -1,4 +1,11 @@
 include("${CMAKE_CURRENT_LIST_DIR}/../../../core/sources.cmake")
+# T-Deck Native View Phase 2: the prototype image adds the shared DOS screen
+# painter (board_dos_layout.cpp, the same file Windows Original uses) and the
+# boot-time presentation choice (native_view_prototype.cpp).
+set(OPENU5_NATIVE_VIEW_SOURCES)
+if(OPENU5_NATIVE_VIEW_PROTOTYPE)
+    set(OPENU5_NATIVE_VIEW_SOURCES "board_dos_layout.cpp" "native_view_prototype.cpp")
+endif()
 idf_component_register(
     SRCS "main.cpp" "sd_diagnostic_logger.cpp" "tdeck_board.cpp" "tdeck_input.cpp" "input_controller.cpp"
          "keyboard_matrix.cpp"
@@ -6,6 +13,7 @@ idf_component_register(
          "asset_pack.cpp" "native_renderer.cpp" "alpha_resources.cpp" "alpha_dialogue.cpp"
          "alpha_save.cpp" "alpha_save_generation.cpp" "alpha_runtime.cpp" "ui_input_adapter.cpp" "dungeon_art_cache.cpp"
          "alpha_audio.cpp" "tdeck_audio.cpp" "system_perf.cpp" "idle_service.cpp"
+         ${OPENU5_NATIVE_VIEW_SOURCES}
          ${OPENU5_CORE_SOURCES}
     INCLUDE_DIRS "." "../../../core/include"
     # A3-04B (ALPHA3_AUDIO.md section 19.8): the audio task's per-sample path in IRAM.
@@ -75,7 +83,15 @@ endif()
 # One capability definition for every TU, including all shared core sources.
 # Firmware never installs a desktop profile; preserve its existing defaults
 # while allowing Windows-only presentation branches to be garbage collected.
-target_compile_definitions(${COMPONENT_LIB} PUBLIC OPENU5_FIXED_HANDHELD_PROFILE=1)
+# The Native View prototype fixes only the interaction (the 1988 interaction
+# model stays dead code); its presentation is chosen at boot, and the Board
+# compiles the DOS screen (PUBLIC: every TU must agree on the Board's layout).
+if(OPENU5_NATIVE_VIEW_PROTOTYPE)
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC OPENU5_FIXED_HANDHELD_INTERACTION=1
+        OPENU5_DOS_SCREEN_LAYOUT=1 OPENU5_NATIVE_VIEW_PROTOTYPE=1)
+else()
+    target_compile_definitions(${COMPONENT_LIB} PUBLIC OPENU5_FIXED_HANDHELD_PROFILE=1)
+endif()
 target_compile_definitions(${COMPONENT_LIB} PRIVATE
     OPENU5_GIT_COMMIT="${OPENU5_GIT_COMMIT}")
 if(OPENU5_ENABLE_DEVELOPER_TOOLS)

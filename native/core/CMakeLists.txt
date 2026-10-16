@@ -2687,6 +2687,30 @@ if(BUILD_TESTING)
   openu5_a4_ui2_runtime(win_dos_runtime)
   add_test(NAME win_dos_runtime COMMAND win_dos_runtime
     "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
+  # T-Deck Native View Phase 2 (docs/TDECK_NATIVE_VIEW_PHASE2.md): the prototype firmware's
+  # configuration -- the core with only the interaction fixed, the Board WITH the shared DOS
+  # screen painter (board_dos_layout.cpp) and the boot selector -- through raw T-Deck input on
+  # the REAL AlphaRuntime: geometry, pacing, dirty regions, transitions, the prompt strip, and
+  # Enhanced/Native traces, transcripts and save bytes compared.
+  add_library(openu5_native_handheld_core STATIC ${OPENU5_CORE_SOURCES})
+  target_include_directories(openu5_native_handheld_core PUBLIC include)
+  target_compile_features(openu5_native_handheld_core PUBLIC cxx_std_17)
+  target_compile_definitions(openu5_native_handheld_core PUBLIC OPENU5_FIXED_HANDHELD_INTERACTION=1)
+  if(OPENU5_ENABLE_DEVELOPER_TOOLS)
+    target_compile_definitions(openu5_native_handheld_core PUBLIC OPENU5_ENABLE_DEVELOPER_TOOLS=1)
+  endif()
+  if(MSVC)
+    target_compile_options(openu5_native_handheld_core PRIVATE /W4)
+  else()
+    target_compile_options(openu5_native_handheld_core PRIVATE -Wall -Wextra -Wconversion -Werror)
+  endif()
+  openu5_a4_ui2_runtime(tdeck_native_view_runtime
+    "../targets/tdeck/host_tests/tdeck_native_view_runtime_test.cpp" openu5_native_handheld_core)
+  target_sources(tdeck_native_view_runtime PRIVATE
+    ../targets/tdeck/main/board_dos_layout.cpp ../targets/tdeck/main/native_view_prototype.cpp)
+  target_compile_definitions(tdeck_native_view_runtime PRIVATE OPENU5_DOS_SCREEN_LAYOUT=1 OPENU5_NATIVE_VIEW_PROTOTYPE=1)
+  add_test(NAME tdeck_native_view_runtime COMMAND tdeck_native_view_runtime
+    "${CMAKE_CURRENT_SOURCE_DIR}/../assets/openu5-alpha1-resources.bin")
   # T-Deck Native View Phase 1 (docs/TDECK_NATIVE_VIEW_PHASE1.md): the future T-Deck Native
   # presentation (the 1988 right panel) with the handheld interaction, through raw T-Deck
   # keys on the REAL AlphaRuntime and Board: the same interaction, transcript, journey state

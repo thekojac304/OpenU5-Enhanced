@@ -173,9 +173,9 @@ set(UV_SHARED_APP_SOURCES
   "${UV_TDECK_MAIN}/tdeck_board.cpp"
   "${UV_TDECK_MAIN}/device_smoke_tests.cpp"
   "${UV_TDECK_MAIN}/idle_service.cpp"
-  # Desktop only (the firmware's CMakeLists does not list it): Original mode's
-  # DOS 320 x 200 game screen, a part of the Board OPENU5_DESKTOP_DOS_LAYOUT
-  # switches on below.
+  # Original mode's DOS 320 x 200 game screen, a part of the Board that
+  # OPENU5_DOS_SCREEN_LAYOUT switches on below. The T-Deck firmware compiles it
+  # only in its Native View prototype image (OPENU5_NATIVE_VIEW_PROTOTYPE).
   "${UV_TDECK_MAIN}/board_dos_layout.cpp")
 add_library(uv_shared_app STATIC ${UV_SHARED_APP_SOURCES})
 target_include_directories(uv_shared_app PUBLIC ${UV_COMPAT_INCLUDES} "${UV_TDECK_MAIN}")
@@ -183,7 +183,7 @@ target_link_libraries(uv_shared_app PUBLIC uv_platform uv_core)
 target_compile_definitions(uv_shared_app PRIVATE OPENU5_GIT_COMMIT="${UV_GIT_COMMIT}")
 # PUBLIC: the Board's layout depends on it, so every file that includes
 # tdeck_board.h must agree.
-target_compile_definitions(uv_shared_app PUBLIC OPENU5_DESKTOP_DOS_LAYOUT=1)
+target_compile_definitions(uv_shared_app PUBLIC OPENU5_DOS_SCREEN_LAYOUT=1)
 # The device sources reach the "/sd" card through their own stdio/POSIX
 # calls; the force-included redirect maps them to the data directory.
 if(MSVC)

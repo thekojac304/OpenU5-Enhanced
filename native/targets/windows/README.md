@@ -116,7 +116,7 @@ ctest --test-dir native/targets/windows/build-release --output-on-failure
 The Board draws the T-Deck's 320×240 screen, except in Original play: there
 it composes the DOS game's own 320×200 screen on the panel's rows 0..199
 (`native/targets/tdeck/main/board_dos_layout.cpp`, built only here, behind
-`OPENU5_DESKTOP_DOS_LAYOUT`; ULTIMA.EXE's frame, the map whole at (8,8), the
+`OPENU5_DOS_SCREEN_LAYOUT`; ULTIMA.EXE's frame, the map whole at (8,8), the
 right panel's boxes, the 16×13 console). `Board::picture_height()` says which
 (200, or 240 for the frontend and the Developer screen) and the presenter
 shows that many rows. `"originalScreen": "Handheld"` in `windows.json` (or

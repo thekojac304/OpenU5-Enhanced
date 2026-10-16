@@ -29,6 +29,9 @@
 #include "tdeck_audio.h"
 #include "tdeck_board.h"
 #include "tdeck_input.h"
+#if defined(OPENU5_NATIVE_VIEW_PROTOTYPE)
+#include "native_view_prototype.h"
+#endif
 
 namespace {
 constexpr char kTag[]="OpenU5-TDeck";
@@ -161,6 +164,19 @@ extern "C" void app_main(void) {
             // BOOT2: no fixed hold here (it was 1800 ms). The identity screen stays up
             // for the runtime initialization below, which is real work.
             esp_err_t initialized=ESP_FAIL;
+#if defined(OPENU5_NATIVE_VIEW_PROTOTYPE)
+            {
+                // T-Deck Native View Phase 2 (docs/TDECK_NATIVE_VIEW_PHASE2.md): the
+                // development image's presentation, chosen once here, before any game
+                // screen; the interaction stays the handheld's (fixed at build time).
+                debug51::Step trace("native-view-prototype-select");
+                const auto presentation=tdeck::read_prototype_presentation();
+                tdeck::install_prototype_presentation(presentation);
+                board.set_dos_layout(presentation==tdeck::PrototypePresentation::Native);
+                ESP_LOGW(kTag,"NATIVE_VIEW_PROTOTYPE presentation=%s marker=%s (development image, not a release)",
+                         tdeck::prototype_presentation_name(presentation),tdeck::kPrototypePresentationPath);
+            }
+#endif
             {
                 debug51::Step trace("alpha-runtime-initialize");
                 initialized=runtime.initialize(alpha_pack,alpha_report,tile_pack,tile_report);

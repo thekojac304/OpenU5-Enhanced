@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 # This is an independent ESP-IDF project; no web-project tooling is required.
 set(IDF_TARGET "esp32s3" CACHE STRING "Target chip")
 option(OPENU5_ENABLE_DEVELOPER_TOOLS "Build the Alpha developer menu" ON)
+# T-Deck Native View Phase 2 (docs/TDECK_NATIVE_VIEW_PHASE2.md): a DEVELOPMENT
+# image that also compiles the DOS 320 x 200 screen and chooses Native or
+# Enhanced presentation at boot. Off: the production image, byte for byte the
+# same configuration as v0.5.0 (handheld presentation and interaction fixed).
+option(OPENU5_NATIVE_VIEW_PROTOTYPE "Build the T-Deck Native View development prototype" OFF)
 if(NOT IDF_TARGET STREQUAL "esp32s3")
     message(FATAL_ERROR "The T-Deck Plus target requires IDF_TARGET=esp32s3")
 endif()
@@ -39,6 +44,11 @@ endif()
 # shares a name or an FW line with the superseded RC4 image.
 # Unified v0.5.0 release candidate; physical acceptance is still pending.
 set(PROJECT_VER "0.5.0-rc2")
+# The prototype never shares a version line, FW identity or Launcher file name
+# with a release image.
+if(OPENU5_NATIVE_VIEW_PROTOTYPE)
+    set(PROJECT_VER "0.5.0-nativeview-p2-debug")
+endif()
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(openu5_tdeck)
 

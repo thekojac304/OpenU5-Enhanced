@@ -650,7 +650,7 @@ esp_err_t Board::show_endgame_page(const uint8_t *page, const uint16_t *palette,
     ESP_RETURN_ON_ERROR(set_display_window(0, 0, kDisplayWidth, kDisplayHeight), kTag, "set ending window");
     gpio_set_level(pins::kTftDataCommand, 1);
     auto &row_bytes = transfer_row_;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     const int top = dos_layout_ ? 0 : kEndgameTop; // the DOS screen is the panel's rows 0..199
 #else
     constexpr int top = kEndgameTop;
@@ -711,7 +711,7 @@ esp_err_t Board::fizzle_endgame(openu5::EndgameFizzle &picture, openu5::EndgameF
     endgame_capturing_ = false;
     console_cursor_.visible = false; // A4-UI4: the dissolve takes the console
     uint16_t x = 0, y = 0;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     const int top = dos_layout_ ? 0 : kEndgameTop; // the DOS screen is the panel's rows 0..199
 #else
     constexpr int top = kEndgameTop;
@@ -812,7 +812,7 @@ esp_err_t Board::show_view(const uint16_t *pixels, int width, int height,
 esp_err_t Board::show_camp_viewport(const uint16_t *pixels,uint32_t)
 {
     if(!display_initialized_||!alpha_drawn_||!pixels)return ESP_ERR_INVALID_STATE;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     if(dos_layout_)return dos_camp_viewport(pixels);
 #endif
     const auto result=draw_rgb565(openu5::kHudViewportX,openu5::kHudViewportY,
@@ -825,7 +825,7 @@ esp_err_t Board::fill_bed_viewport()
 {
     // Original (8,8)-(183,183) is the entire 176x176 gameplay window.
     // Native's sky and wind strips live inside that window, so preserve them.
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     if(dos_layout_)return dos_fill_bed_viewport();
 #endif
     const auto r=bed_viewport_rect();
@@ -870,7 +870,7 @@ esp_err_t Board::draw_party_rows(const openu5::GameState &game,DevicePartyHighli
 
 esp_err_t Board::refresh_bed_status_panel(const openu5::GameState &game,DevicePartyHighlight party_highlight) {
     if(!display_initialized_||!alpha_drawn_)return ESP_ERR_INVALID_STATE;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
     if(dos_layout_)return dos_refresh_bed_status_panel(game,party_highlight);
 #endif
     // Drawn unconditionally, as before; the rows' caches learn what is shown.
@@ -921,13 +921,23 @@ esp_err_t Board::show_alpha(const uint16_t *pixels,const openu5::UiSession &ui,
     // corridor whose two directions look alike.
     const bool bands_active=dungeon_bands&&dungeon_bands->active;
     if(!display_initialized_||!pixels)return ESP_ERR_INVALID_STATE;
-#if defined(OPENU5_DESKTOP_DOS_LAYOUT)
-    // Windows Original: the DOS game's 320 x 200 screen (board_dos_layout.cpp);
-    // the Developer screen stays the handheld's. The 1988 model has no shop
-    // panel, prompt bar or text sizes, and its map is never clipped by a strip.
-    if(dos_layout_&&!debug)
-        return show_alpha_dos(pixels,ui,game,hud,runes_font,animated_cells,animation_only,selection,party_highlight,
-                              viewport_crc,dungeon_bands,preserve_party_panel);
+#if defined(OPENU5_DOS_SCREEN_LAYOUT)
+    // The DOS game's 320 x 200 screen (board_dos_layout.cpp): Windows Original
+    // and the T-Deck Native View prototype; the Developer screen stays the
+    // handheld's. Its map is never clipped by a strip and it has no text sizes.
+    // The 1988 interaction model composes no shop panel or prompt bar; the
+    // handheld one's prompt bar goes to the strip under the picture, and its
+    // shop panel, which has no DOS form yet (TDECK_NATIVE_VIEW_PHASE2.md),
+    // is shown on the handheld screen until the shop closes.
+    const bool handheld_shop=shop&&shop->active;
+    if(dos_layout_&&!debug&&!handheld_shop)
+        return show_alpha_dos(pixels,ui,game,hud,runes_font,animated_cells,animation_only,selection,context_bar,
+                              party_highlight,viewport_crc,dungeon_bands,preserve_party_panel);
+    if(dos_layout_&&handheld_shop&&dos_screen_drawn_){
+        // Leaving the DOS frame: the handheld screen repaints whole, and the
+        // DOS frame does again when the shop closes.
+        alpha_drawn_=false;dos_screen_drawn_=false;
+    }
 #endif
     (void)turn;(void)overlay;
     debug_last_full_redraw_=false;debug_last_dirty_regions_=0;debug_last_pixels_=0;
