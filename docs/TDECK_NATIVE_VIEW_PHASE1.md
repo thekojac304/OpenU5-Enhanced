@@ -176,6 +176,11 @@ identical, the 20 linked desktop-candidate symbols are the same set, and every c
 stack frame is unchanged. Removing the two fields from fixed builds would make the
 struct's layout depend on build flags, so it was not done.
 
+A second fresh firmware build from the committed, clean tree (`0ec1b481`,
+`phase1-a1	deck-postcommit`) gives the same 1,075,520-byte image and identical sections;
+only the embedded commit (and so the SHA-256) differs. The image still carries the
+`0.5.0-rc2` build label the v0.5.0 tag kept; it is a development build, not a release.
+
 ## 9. Known limitations
 
 - The future configuration is representable and its decisions are tested; it is not a
