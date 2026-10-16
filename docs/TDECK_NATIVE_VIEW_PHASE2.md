@@ -156,7 +156,26 @@ own logs (`stack_margin`, `internal`, `psram` in the render logs): **not measure
 
 ## 8. Development package
 
-Built from the clean commit after this record; its identity is recorded in the follow-up commit below this line.
+Built fresh from the clean commit `6f40c96f2c40e7631f904c39700fa0ad23ee2f75` (the image
+embeds `6f40c96f2c40`, no `-dirty`), then packaged by `native/targets/tdeck/package_launcher.py`.
+
+| Item | Value |
+| --- | --- |
+| File | `OpenU5-TDeck-Alpha0.5.0-nativeview-p2-Debug-Launcher.bin` |
+| Location | `C:\Dev\U5Native\builds\u5-tdeck-native-p2\package-6f40c96f\` (with `SHA256SUMS.txt` and the `sdkconfig` used); built in `phase2-a1\tdeck-postcommit-prototype` |
+| SHA-256 | `833024d148dec1eea6d33ac3da778c97e3aec786c5eb93ab1dfd48f1818d2e69` |
+| Size | 1,092,176 bytes (Launcher allocation 1,114,112; 21,937 bytes to the next 64 KiB step) |
+| Version / FW line | `0.5.0-nativeview-p2-debug` |
+| Configuration | ESP-IDF 6.1, Xtensa GCC 15.2.0, v0.5.0 `sdkconfig`, `-D OPENU5_NATIVE_VIEW_PROTOTYPE=ON`, developer tools ON (as production) |
+| Activation | Native by default; `enhanced` in `/sd/ultima5/dev/presentation.txt` selects Enhanced (reboot to change) |
+
+The post-commit production build (`tdeck-postcommit-production`, `0.5.0-rc2`, 1,075,520 bytes)
+and the prototype match the validation builds in every section. The prototype's first
+post-commit Ninja run stopped on an Xtensa GCC internal compiler error (segmentation fault)
+in ESP-IDF's own `esp_lcd_panel_rgb.c`, not project code — the same intermittent compiler
+failure CLEANUP3 and RC2 recorded; the unchanged build resumed at `-j 2` and passed. Both
+logs are kept (`postcommit-prototype-build.log`, `…-build-retry.log`). Nothing under
+`C:\Dev\U5Native\releases` was written; the v0.5.0 packages are untouched.
 
 ## 9. Hardware checklist (all **PENDING**)
 
