@@ -1,6 +1,6 @@
 > **About this repository.** OpenU5-Enhanced is the development history behind
 > [Ultima V Native](https://github.com/thekojac304/ultima-v-native), which is where releases, downloads and current
-> source live. `main` here is the OpenU5 browser-port line as of August 2026 (described below). The other branches
+> source live ([latest release](https://github.com/thekojac304/ultima-v-native/releases/latest)). `main` here is the OpenU5 browser-port line as of August 2026 (described below). The other branches
 > (`enhanced-mode`, `esp32-tdeck-port`, `tdeck/native-view-phase1`–`3`, `windows/original-dos-shops`,
 > `preserve/a4-parity1-wip`) and the 42 `alpha2-*`, `alpha3-*` and `alpha4-*` tags preserve work-in-progress lines
 > and milestone snapshots that aren't in `ultima-v-native`. GPL-3.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)). No
